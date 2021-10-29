@@ -28,29 +28,19 @@ def getWeights(g):
 # Log Prior base funtion
 # Log Prior in the log-weights representation:
 # theta * ((g.T * w) - (g0.T * w) + np.log(s0) - np.log(s))
-
 def bioen_log_prior(w, s, g, g0, theta):
     w0,s0 = getWeights(g0)
     g_ave = np.sum(g * w)
     g0_ave = np.sum(g0 * w)
     log_prior = theta * (g_ave - g0_ave + np.log(s0) - np.log(s))
-    return log_prior     
+    return log_prior
 
 
 # Log Posterior base function
-
 def bioen_log_posterior_base(g, g0, std, sim_map_m, exp_map, theta):
     w, s = getWeights(g)
     log_prior = bioen_log_prior(w, s, g, g0, theta)
     chiSqr = chiSqrTerm(w, std, sim_map_m, exp_map)
-    log_posterior = chiSqr + log_prior
-    return log_posterior
-
-# Log Posterior base function with DIRICHLET
-def bioen_log_posterior_dirichlet(g, g0, sim_map_m, exp_map, theta):
-    w, s = getWeights(g)
-    log_prior = bioen_log_prior_dirichlet(w, s, g, g0, theta)
-    chiSqr = chiSqrTerm(w, sim_map_m, exp_map)
     log_posterior = chiSqr + log_prior
     return log_posterior
 
