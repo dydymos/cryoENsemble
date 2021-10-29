@@ -3,6 +3,7 @@ import MDAnalysis
 from MDAnalysis.analysis import density
 
 
+
 def pdb2map_array(PDBs,sigma):
     """
     Generates an array with calculated EM density maps for each structure
