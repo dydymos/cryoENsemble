@@ -19,7 +19,7 @@ def reference_map(map):
     # voxel dimension
     VOX= exp_em.voxel_size['x']
     # Map center
-    em_origin = np.array([-28.634, -4.097, -39.461])
+    em_origin = np.array([exp_em.header['origin']['x'],exp_em.header['origin']['y'],exp_em.header['origin']['z']])
     map_param["nx"] = nx
     map_param["ny"] = ny
     map_param["nz"] = nz
