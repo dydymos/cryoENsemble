@@ -40,10 +40,18 @@ def cryoEM_parameters(map_param):
     return cryoem_param
 
 
-def pdb2map_array(PDBs,sigma):
+def pdb2map_array(PDBs,sigma,map_param,cryoem_param):
     """
     Generates an array with calculated EM density maps for each structure
     """
+    nx = map_param["nx"]
+    ny = map_param["ny"]
+    nz = map_param["nz"]
+    VOX = map_param["vox"]
+    em_origin = map_param["em_origin"]
+    delta = cryoem_param["delta"]
+    INVSIG2 = cryoem_param["invsig2"]
+    PREFACT = cryoem_param["prefact"]
     # prepare zero data
     data_array = []
     for ipdb in range(0,len(PDBs)):
