@@ -67,9 +67,9 @@ def pdb2map_array(PDBs,sigma,map_param,cryoem_param):
             # get atom position
             apos = atom.position
             # get indexes in the map
-            ii = int(round((apos[0]-em_origin[0])/VOX_))
-            jj = int(round((apos[1]-em_origin[1])/VOX_))
-            kk = int(round((apos[2]-em_origin[2])/VOX_))
+            ii = int(round((apos[0]-em_origin[0])/VOX))
+            jj = int(round((apos[1]-em_origin[1])/VOX))
+            kk = int(round((apos[2]-em_origin[2])/VOX))
             # get delta grid
             d=delta[atype]
             # get constant parameters
@@ -165,3 +165,29 @@ def write_map(map,map_name,map_param):
     mrc.header.origin.x=em_origin[0]; mrc.header.origin.y=em_origin[1]; mrc.header.origin.z=em_origin[2]
     mrc.set_data(map_32)
     mrc.close()
+
+
+def mask_sim_gen(sim_em_data,N_models):
+    """
+    Generates mask based on structural ensemble
+    """
+    mask_x = []
+    mask_y = []
+    mask_z = []
+    for i in range(0,N_models):
+        mask_x+=np.where(sim_em_data[i]>0)[0].tolist()
+        mask_y+=np.where(sim_em_data[i]>0)[1].tolist()
+        mask_z+=np.where(sim_em_data[i]>0)[2].tolist()
+    mask_sim=np.array([mask_x,mask_y,mask_z])
+    mask_sim_uniq=np.unique(mask_sim,axis=1)
+    return mask_sim_uniq
+
+def combine_masks(mask_exp,mask_sim):
+    mask_x=[]
+    mask_y=[]
+    mask_z=[]
+    mask_x=mask_exp[0].tolist()+mask_sim[0].tolist()
+    mask_y=mask_exp[1].tolist()+mask_sim[1].tolist()
+    mask_z=mask_exp[2].tolist()+mask_sim[2].tolist()
+    mask_final=np.array([mask_f_x,mask_f_y,mask_f_z])
+    mask_final_uniq=(np.unique(mask_final,axis=1)[0],np.unique(mask_final,axis=1)[1],np.unique(mask_final,axis=1)[2])
