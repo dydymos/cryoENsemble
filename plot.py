@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 
 
 def plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels):
+    cmap = plt.cm.get_cmap('rainbow')
     plt.figure(figsize=[6,6])
     N = len(s_dict)
     s_array = np.array(list(s_dict.values()))
     chisqrt_array = np.array(list(chisqrt_d.values()))
-    cmap = plt.cm.get_cmap('rainbow')
     for i in range(0,N):
         key = np.sort(list(s_dict.keys()))[::-1][i]
         plt.scatter(-1*s_dict[key],chisqrt_d[key]/N_voxels,color=cmap((i+1)/N),label=str(key),s=80)
@@ -25,12 +25,13 @@ def plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels):
 
 
 def plot_weights(w_opt_d,theta_new):
+    cmap = plt.cm.get_cmap('rainbow')
     plt.figure(figsize=[6,6])
     N = len(w_opt_d)
     for i in range(0,N):
         key = np.sort(list(w_opt_d.keys()))[::-1][i]
         plt.plot(w_opt_d[key],'o-',color=cmap((i+1)/N),label=str(key))
-    plt.plot(w_opt_d[theta_new],'o-',color="black",linestyle="dashed")
+    plt.plot(w_opt_d[theta_new],'o-',color="black")
     plt.legend(loc=(1.0,0))
     plt.xlabel("Models")
     plt.ylabel("Weights")
