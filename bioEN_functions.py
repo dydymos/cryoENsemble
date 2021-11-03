@@ -73,3 +73,60 @@ def grad_bioen_log_posterior_base(g, g0, std, sim_map_m, exp_map, theta):
         tmp[mu] = w_mu * np.sum(diff1 * diff2)
     gradient = w * theta * (g - np.sum(g*w) - g0 + np.sum(g0*w)) + tmp
     return gradient
+
+
+def bioen(sim_em_v_data,exp_em_mask,thetas,g0,g_init,sf_start,n_iter,epsilon,pgtol,maxiter):
+    """
+    "" ITERATIONS THROUGHT Thetas
+    """
+    res_array=[]
+    sf_opt_array=[]
+    for theta in thetas:
+        print("THETA = "+str(theta))
+        g = g_init
+        sim_em_v=sim_em_v_data*sf_start
+        sf_opt = sf_start
+        for i in range(0,n_iter):
+            print("ITERATION "+str(i+1))
+            # Getting optimal weight
+            res=sopt.fmin_l_bfgs_b(bioen_log_posterior_base,g,args = (g0, std, sim_em_v, exp_em_mask, theta),fprime = grad_bioen_log_posterior_base, epsilon = epsilon, pgtol = pgtol, maxiter = maxiter, disp = False)
+            # new weights
+            w_opt = getWeights(res[0])[0]
+            # final energy
+            fmin_final = res[1]
+            print("fmin_final    = ", fmin_final)
+            # Using new weights to get new scalling factor
+            sf_ = leastsq(coeff_fit, sf_opt, args=(w_opt,std, sim_em_v_data,exp_em_mask))[0]
+            sf_opt = sf_
+            # geting new sim data with new nuisance parameter
+            sim_em_v = sim_em_v_data * sf_opt
+        sf_opt_array.append(sf_opt)
+        res_array.append(res)
+    return res_array, sf_opt_array
+
+def get_entropy(w0, weights):
+    """
+    Calculate entropy - Kullback-Leibler divergence
+    """
+    s = - np.sum(weights * np.log(weights / w0))
+    return s
+
+
+def bioen_analysis(res_array,thetas):
+    """
+    Function to calculate various statistics from the BioEN optimization
+    """
+    # Array with optimal log-weights for each theta
+    g_opt_array = [res_array[i][0] for i in range(0,len(thetas))]
+    # Array with optimal weights for each theta
+    w_opt_array = [getWeights(i)[0] for i in g_opt_array]
+    # Array with the final value of the optimize function
+    fmin_final_array = [res_array[i][1] for i in range(0,len(thetas))]
+    # Array with entropy
+    S_array = [get_entropy(w0,i) for i in w_opt_array]
+    return w_opt_array,fmin_final_array,S_array
+
+
+
+    # Array with chisqr
+    chisqrt_array = [chiSqrTerm(w_opt_array[i],std,sim_em_v_data*sf_opt_array[i],exp_em_mask) for i in range(0,len(thetas))]

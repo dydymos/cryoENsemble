@@ -183,11 +183,15 @@ def mask_sim_gen(sim_em_data,N_models):
     return mask_sim_uniq
 
 def combine_masks(mask_exp,mask_sim):
+    """
+    Combines masks from exp and MD ensemble
+    """
     mask_x=[]
     mask_y=[]
     mask_z=[]
     mask_x=mask_exp[0].tolist()+mask_sim[0].tolist()
     mask_y=mask_exp[1].tolist()+mask_sim[1].tolist()
     mask_z=mask_exp[2].tolist()+mask_sim[2].tolist()
-    mask_final=np.array([mask_f_x,mask_f_y,mask_f_z])
+    mask_final=np.array([mask_x,mask_y,mask_z])
     mask_final_uniq=(np.unique(mask_final,axis=1)[0],np.unique(mask_final,axis=1)[1],np.unique(mask_final,axis=1)[2])
+    return mask_final_uniq

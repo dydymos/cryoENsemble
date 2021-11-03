@@ -8,7 +8,7 @@ from reference_map_ADK import *
 
 """
 
-USE: cryoBioEN.py ADK.mrc w1 w2 sigma noise
+USE: cryoBioEN.py ADK.mrc w1 w2 resolution noise
 
 w1 - weights for 1AKE
 w2 - weights for 4AKE
@@ -27,7 +27,7 @@ cryoem_param = cryoEM_parameters(map_param)
 em_weights=np.array([float(sys.argv[2]),float(sys.argv[3])])
 
 # map resolution
-sigma = float(sys.argv[4])
+sigma = float(sys.argv[4])*0.225
 
 # average map
 em_map = pdb2map_avg(em_weights,sigma,["1ake.pdb","4ake_aln.pdb"],map_param,cryoem_param)
@@ -78,7 +78,7 @@ PDBs_4ake = glob.glob("/home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/
 PDBs=PDBs_1ake+PDBs_4ake
 
 # Generating array of EM maps based on structures
-sim_em_data = np.array(pdb2map_array(PDBs,float(sys.argv[3]),map_param,cryoem_param))
+sim_em_data = np.array(pdb2map_array(PDBs,sigma,map_param,cryoem_param))
 
 
 """
@@ -86,25 +86,24 @@ sim_em_data = np.array(pdb2map_array(PDBs,float(sys.argv[3]),map_param,cryoem_pa
 """
 
 # Array with experimental mask
-mask_exp_array=np.array(mask_exp)
+#mask_exp_array=np.array(mask_exp)
 
 # mask for simulated maps
-mask_sim = mask_sim_gen(sim_em_data,N_models)
+#mask_sim = mask_sim_gen(sim_em_data,N_models)
 
 # Geting combined voxels from exp and from sim structures
-mask_comb = combine_masks(mask_exp_array,mask_sim)
+#mask_comb = combine_masks(mask_exp_array,mask_sim)
 
 # Masked experimental data
-exp_em_mask = exp_em[mask_comb]
+exp_em_mask = em_map_threshold[mask_exp]
 
 # Number of non-zero voxels
-N_voxels=np.shape(mask_comb)[1]
+N_voxels=np.shape(mask_exp)[1]
 
-# New simulated map with only voxels corresponding to the experimental map
-sim_em_v=np.zeros([N_models,N_voxels])
+# New simulated map with only voxels corresponding to the experimental signal
+sim_em_v_data=np.zeros([N_models,N_voxels])
 for i in range(0,N_models):
-    sim_em_v[i,]=sim_em_data[i][mask_comb]
-
+    sim_em_v_data[i]=sim_em_data[i][mask_exp]
 
 """
 "" Optimization via Log-Weights as in Kofinger et. al 2019
@@ -115,23 +114,54 @@ for i in range(0,N_models):
 # Without loss of generality, because all w>0 we can set one of the log_w to 0. Then we would need to optimize log-posterior function for the remaining N-1 weights.
 
 """
-"" Initial parameters
-"""
-
-"""
-"" Reference Weights
+"" Initial parameters, reference weights and log-weights
 """
 
 # Reference weights for models [UNIFORM]
 w0 = np.ones(N_models)/N_models
-# Initial weights for models to start optimization
-# UNIFORM
+
+# Initial weights for models to start optimization [UNIFORM]
 w_init = np.ones(N_models)/N_models
+
+# Reference log-weights, with one vaue set to 0
+# Actually for uniform reference weights this sets the whole log-weight vector to zero - is this a problem?
+g0 = np.log(w0)
+g0 -= g0[-1]
+
+# Log-weights for initialization of the optimization protocol
+g_init = np.log(w_init)
+g_init -= g_init[-1]
+
+# Initialize log-weights
+g = g_init
 
 # Initial scalling factor
 sf_init = 1.0
 
 # std deviation
-std = np.ones(N_voxels)*noise_lvl
-# Getting optimal scalling factor
-sf_start = leastsq(coeff_fit, sf_init, args=(w0,std,sim_em_v,exp_em_mask))[0]
+std = np.ones(N_voxels)*em_threshold
+
+# Getting initial optimal scalling factor
+sf_start = leastsq(coeff_fit, sf_init, args=(w0,std,sim_em_v_data,exp_em_mask))[0]
+
+"""
+"" Parameters for optimization algorithm
+"""
+
+# For now we can only use BFGS algorithm as is coded in SCIPY
+
+epsilon = 0.1
+pgtol = 0.1
+maxiter = 5000
+
+# Number of iterations
+n_iter = 10
+
+# Theta
+thetas=np.loadtxt("thetas.dat")
+
+# Running BioEN iterations through hyperparameter Theta:
+res_array, sf_opt_array = bioen(sim_em_v_data,exp_em_mask,thetas, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+
+# Getting optimal weights:
+w_opt_array,fmin_final_array,S_array = bioen_analysis(res_array,thetas)
