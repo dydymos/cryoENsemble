@@ -5,6 +5,7 @@ import numpy as np
 from bioEN_functions import *
 from cryoEM_methods import *
 from reference_map_ADK import *
+from plot import *
 
 """
 
@@ -139,7 +140,7 @@ maxiter = 5000
 n_iter = 10
 
 # Theta
-thetas = [1000000,100000,10000,1000,100,1,0]
+thetas = [1000000,100000,10000,1000,100,10,1,0]
 
 # Running BioEN iterations through hyperparameter Theta:
 # w_opt_array, S_array, chisqrt_array = bioen(sim_em_v_data,exp_em_mask,std,thetas, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
@@ -156,7 +157,7 @@ for th in thetas:
     s_dict[th] = get_entropy(w0,w_temp)
     chisqrt_d[th] = chiSqrTerm(w_temp,std,sim_em_v_data*sf_temp,exp_em_mask)
 
-# Knee locator
+# Knee locator used to find sensible theta value
 theta_index = knee_loc(list(s_dict.values()),list(chisqrt_d.values()))
 theta_knee = thetas[theta_index]
 theta_index_sort = theta_index
