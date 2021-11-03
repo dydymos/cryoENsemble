@@ -206,12 +206,12 @@ def get_entropy(w0, weights):
     s = - np.sum(weights * np.log(weights / w0))
     return s
 
-def knee_loc(chisqrt_array,S_array):
+def knee_loc(S_array,chisqrt_array):
     """
     "" Finding knee in the curve
     """
-    yy=np.array(chisqrt_array)
-    xx=-1*np.array(S_array)
+    yy=np.sort(np.array(chisqrt_array))[::-1]
+    xx=-1*np.sort(np.array(S_array))[::-1]
     kneedle = KneeLocator(xx,yy, S=1.0, curve="convex", direction="decreasing")
-    theta_index = np.where(xx==kneedle.knee)[0][0]
+    theta_index = np.where(-1*np.array(S_array)==kneedle.knee)[0][0]
     return theta_index

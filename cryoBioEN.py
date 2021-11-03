@@ -139,7 +139,7 @@ maxiter = 5000
 n_iter = 10
 
 # Theta
-thetas=np.array([10e6,10e5,10e4,1000,100,10,1,0])
+thetas = [1000000,100000,10000,1000,100,1,0]
 
 # Running BioEN iterations through hyperparameter Theta:
 # w_opt_array, S_array, chisqrt_array = bioen(sim_em_v_data,exp_em_mask,std,thetas, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
@@ -147,13 +147,31 @@ thetas=np.array([10e6,10e5,10e4,1000,100,10,1,0])
 # Running BioEN in a loop so we can apply knee dectection algorithm later
 w_opt_d = dict()
 sf_opt_d = dict()
+s_dict = dict()
+chisqrt_d = dict()
 for th in thetas:
-    w_temp, sf_temp = bioen(sim_em_v_data,exp_em_mask,std,th, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+    w_temp, sf_temp = bioen_single(sim_em_v_data,exp_em_mask,std,th, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
     w_opt_d[th] = w_temp
-    sf_opt_d[th] = sf_opt
+    sf_opt_d[th] = sf_temp
+    s_dict[th] = get_entropy(w0,w_temp)
+    chisqrt_d[th] = chiSqrTerm(w_temp,std,sim_em_v_data*sf_temp,exp_em_mask)
 
-
-S_array = [get_entropy(w0,i) for i in w_opt_array]
-chisqrt_array = [chiSqrTerm(w_opt_array[i],std,sim_em_v_data*sf_opt_array[i],exp_em_mask) for i in range(0,len(thetas))]
 # Knee locator
-theta_index = knee_loc(chisqrt_array,S_array)
+theta_index = knee_loc(list(s_dict.values()),list(chisqrt_d.values()))
+theta_knee = thetas[theta_index]
+theta_index_sort = theta_index
+for i in range(0,10):
+    thetas_old = np.sort(list(w_opt_d.keys()))[::-1]
+    theta_up = (thetas_old[theta_index_sort - 1] + thetas_old[theta_index_sort])/2.
+    theta_down = (thetas_old[theta_index_sort + 1] + thetas_old[theta_index_sort])/2.
+    for th in theta_up,theta_down:
+        w_temp, sf_temp = bioen_single(sim_em_v_data,exp_em_mask,std,th, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+        w_opt_d[th] = w_temp
+        sf_opt_d[th] = sf_temp
+        s_dict[th] = get_entropy(w0,w_temp)
+        chisqrt_d[th] = chiSqrTerm(w_temp,std,sim_em_v_data*sf_temp,exp_em_mask)
+        # Knee locator
+    theta_index_new = knee_loc(list(s_dict.values()),list(chisqrt_d.values()))
+    theta_new = list(w_opt_d.keys())[theta_index_new]
+    thetas_sorted = np.sort(list(w_opt_d.keys()))[::-1]
+    theta_index_sort = np.where(theta_new == thetas_sorted)[0][0]
