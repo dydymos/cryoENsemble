@@ -139,10 +139,21 @@ maxiter = 5000
 n_iter = 10
 
 # Theta
-thetas=np.loadtxt("thetas.dat")
+thetas=np.array([10e6,10e5,10e4,1000,100,10,1,0])
 
 # Running BioEN iterations through hyperparameter Theta:
-w_opt_array, S_array, chisqrt_array = bioen(sim_em_v_data,exp_em_mask,std,thetas, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+# w_opt_array, S_array, chisqrt_array = bioen(sim_em_v_data,exp_em_mask,std,thetas, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
 
+# Running BioEN in a loop so we can apply knee dectection algorithm later
+w_opt_d = dict()
+sf_opt_d = dict()
+for th in thetas:
+    w_temp, sf_temp = bioen(sim_em_v_data,exp_em_mask,std,th, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+    w_opt_d[th] = w_temp
+    sf_opt_d[th] = sf_opt
+
+
+S_array = [get_entropy(w0,i) for i in w_opt_array]
+chisqrt_array = [chiSqrTerm(w_opt_array[i],std,sim_em_v_data*sf_opt_array[i],exp_em_mask) for i in range(0,len(thetas))]
 # Knee locator
 theta_index = knee_loc(chisqrt_array,S_array)
