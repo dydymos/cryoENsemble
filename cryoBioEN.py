@@ -142,7 +142,7 @@ n_iter = 10
 thetas=np.loadtxt("thetas.dat")
 
 # Running BioEN iterations through hyperparameter Theta:
-w_opt_array, S_array, chisqrt_array = bioen(sim_em_v_data,exp_em_mask,thetas, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+w_opt_array, S_array, chisqrt_array = bioen(sim_em_v_data,exp_em_mask,std,thetas, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
 
 # Knee locator
 theta_index = knee_loc(chisqrt_array,S_array)

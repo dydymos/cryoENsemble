@@ -95,7 +95,7 @@ def bioen_init_uniform(N_models):
     sf_init = 1.0
     return w0,w_init,g0,g_init,sf_init
 
-def bioen(sim_em_v_data,exp_em_mask,thetas,g0,g_init,sf_start,n_iter,epsilon,pgtol,maxiter):
+def bioen(sim_em_v_data,exp_em_mask,std,thetas,g0,g_init,sf_start,n_iter,epsilon,pgtol,maxiter):
     """
     "" ITERATIONS THROUGHT Thetas
     """
@@ -108,22 +108,44 @@ def bioen(sim_em_v_data,exp_em_mask,thetas,g0,g_init,sf_start,n_iter,epsilon,pgt
         sim_em_v=sim_em_v_data*sf_start
         sf_opt = sf_start
         for i in range(0,n_iter):
-            print("ITERATION "+str(i+1))
-            # Getting optimal weight
-            res=sopt.fmin_l_bfgs_b(bioen_log_posterior_base,g,args = (g0, std, sim_em_v, exp_em_mask, theta),fprime = grad_bioen_log_posterior_base, epsilon = epsilon, pgtol = pgtol, maxiter = maxiter, disp = False)
-            # new weights
-            w_opt = getWeights(res[0])[0]
-            # final energy
-            fmin_final = res[1]
-            print("fmin_final    = ", fmin_final)
-            # Using new weights to get new scalling factor
-            sf_ = leastsq(coeff_fit, sf_opt, args=(w_opt,std, sim_em_v_data,exp_em_mask))[0]
-            sf_opt = sf_
-            # geting new sim data with new nuisance parameter
-            sim_em_v = sim_em_v_data * sf_opt
+            if (i == 0):
+                print("ITERATION "+str(i+1))
+                # Getting optimal weight
+                res=sopt.fmin_l_bfgs_b(bioen_log_posterior_base,g,args = (g0, std, sim_em_v, exp_em_mask, theta),fprime = grad_bioen_log_posterior_base, epsilon = epsilon, pgtol = pgtol, maxiter = maxiter, disp = False)
+                # new weights
+                w_opt = getWeights(res[0])[0]
+                # final energy
+                fmin = res[1]
+                fmin_old = fmin
+                print("fmin    = ", fmin)
+                # Using new weights to get new scalling factor
+                sf_ = leastsq(coeff_fit, sf_opt, args=(w_opt,std, sim_em_v_data,exp_em_mask))[0]
+                sf_opt = sf_
+                # geting new sim data with new nuisance parameter
+                sim_em_v = sim_em_v_data * sf_opt
+            else:
+                print("ITERATION "+str(i+1))
+                # Getting optimal weight
+                res=sopt.fmin_l_bfgs_b(bioen_log_posterior_base,g,args = (g0, std, sim_em_v, exp_em_mask, theta),fprime = grad_bioen_log_posterior_base, epsilon = epsilon, pgtol = pgtol, maxiter = maxiter, disp = False)
+                # new weights
+                w_opt = getWeights(res[0])[0]
+                # final energy
+                fmin = res[1]
+                if (fmin == fmin_old):
+                    print("fmin    = ", fmin)
+                    print("CONVERGENCE")
+                    break
+                else:
+                    fmin_old = fmin
+                    print("fmin    = ", fmin)
+                    # Using new weights to get new scalling factor
+                    sf_ = leastsq(coeff_fit, sf_opt, args=(w_opt,std, sim_em_v_data,exp_em_mask))[0]
+                    sf_opt = sf_
+                    # geting new sim data with new nuisance parameter
+                    sim_em_v = sim_em_v_data * sf_opt
         sf_opt_array.append(sf_opt)
         w_opt_array.append(w_opt)
-        f_min_array.append(fmin_final)
+        f_min_array.append(fmin)
     S_array = [get_entropy(w0,i) for i in w_opt_array]
     chisqrt_array = [chiSqrTerm(w_opt_array[i],std,sim_em_v_data*sf_opt_array[i],exp_em_mask) for i in range(0,len(thetas))]
     return w_opt_array, S_array, chisqrt_array
