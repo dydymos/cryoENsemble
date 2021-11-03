@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.optimize as sopt
 from scipy.optimize import leastsq
-
+from kneed import KneeLocator
 
 
 def chiSqrTerm(w,std, sim_map_m, exp_map):
@@ -74,13 +74,34 @@ def grad_bioen_log_posterior_base(g, g0, std, sim_map_m, exp_map, theta):
     gradient = w * theta * (g - np.sum(g*w) - g0 + np.sum(g0*w)) + tmp
     return gradient
 
+def bioen_init_uniform(N_models):
+    """
+    Initializes weight, log-weights and parameters
+    """
+    # Reference weights for models [UNIFORM]
+    w0 = np.ones(N_models)/N_models
+    # Initial weights for models to start optimization [UNIFORM]
+    w_init = np.ones(N_models)/N_models
+    # Reference log-weights, with one vaue set to 0
+    # Actually for uniform reference weights this sets the whole log-weight vector to zero - is this a problem?
+    g0 = np.log(w0)
+    g0 -= g0[-1]
+    # Log-weights for initialization of the optimization protocol
+    g_init = np.log(w_init)
+    g_init -= g_init[-1]
+    # Initialize log-weights
+    g = g_init
+    # Initial scalling factor
+    sf_init = 1.0
+    return w0,w_init,g0,g_init,sf_init
 
 def bioen(sim_em_v_data,exp_em_mask,thetas,g0,g_init,sf_start,n_iter,epsilon,pgtol,maxiter):
     """
     "" ITERATIONS THROUGHT Thetas
     """
-    res_array=[]
-    sf_opt_array=[]
+    w_opt_array = []
+    f_min_array = []
+    sf_opt_array = []
     for theta in thetas:
         print("THETA = "+str(theta))
         g = g_init
@@ -101,8 +122,11 @@ def bioen(sim_em_v_data,exp_em_mask,thetas,g0,g_init,sf_start,n_iter,epsilon,pgt
             # geting new sim data with new nuisance parameter
             sim_em_v = sim_em_v_data * sf_opt
         sf_opt_array.append(sf_opt)
-        res_array.append(res)
-    return res_array, sf_opt_array
+        w_opt_array.append(w_opt)
+        f_min_array.append(fmin_final)
+    S_array = [get_entropy(w0,i) for i in w_opt_array]
+    chisqrt_array = [chiSqrTerm(w_opt_array[i],std,sim_em_v_data*sf_opt_array[i],exp_em_mask) for i in range(0,len(thetas))]
+    return w_opt_array, S_array, chisqrt_array
 
 def get_entropy(w0, weights):
     """
@@ -111,22 +135,12 @@ def get_entropy(w0, weights):
     s = - np.sum(weights * np.log(weights / w0))
     return s
 
-
-def bioen_analysis(res_array,thetas):
+def knee_loc(chisqrt_array,S_array):
     """
-    Function to calculate various statistics from the BioEN optimization
+    "" Finding knee in the curve
     """
-    # Array with optimal log-weights for each theta
-    g_opt_array = [res_array[i][0] for i in range(0,len(thetas))]
-    # Array with optimal weights for each theta
-    w_opt_array = [getWeights(i)[0] for i in g_opt_array]
-    # Array with the final value of the optimize function
-    fmin_final_array = [res_array[i][1] for i in range(0,len(thetas))]
-    # Array with entropy
-    S_array = [get_entropy(w0,i) for i in w_opt_array]
-    return w_opt_array,fmin_final_array,S_array
-
-
-
-    # Array with chisqr
-    chisqrt_array = [chiSqrTerm(w_opt_array[i],std,sim_em_v_data*sf_opt_array[i],exp_em_mask) for i in range(0,len(thetas))]
+    yy=np.array(chisqrt_array)
+    xx=-1*np.array(S_array)
+    kneedle = KneeLocator(xx,yy, S=1.0, curve="convex", direction="decreasing")
+    theta_index = np.where(xx==kneedle.knee)[0][0]
+    return theta_index

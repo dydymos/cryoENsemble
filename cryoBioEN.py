@@ -117,26 +117,7 @@ for i in range(0,N_models):
 "" Initial parameters, reference weights and log-weights
 """
 
-# Reference weights for models [UNIFORM]
-w0 = np.ones(N_models)/N_models
-
-# Initial weights for models to start optimization [UNIFORM]
-w_init = np.ones(N_models)/N_models
-
-# Reference log-weights, with one vaue set to 0
-# Actually for uniform reference weights this sets the whole log-weight vector to zero - is this a problem?
-g0 = np.log(w0)
-g0 -= g0[-1]
-
-# Log-weights for initialization of the optimization protocol
-g_init = np.log(w_init)
-g_init -= g_init[-1]
-
-# Initialize log-weights
-g = g_init
-
-# Initial scalling factor
-sf_init = 1.0
+w0,w_init,g0,g_init,sf_init = bioen_init_uniform(N_models)
 
 # std deviation
 std = np.ones(N_voxels)*em_threshold
@@ -161,7 +142,7 @@ n_iter = 10
 thetas=np.loadtxt("thetas.dat")
 
 # Running BioEN iterations through hyperparameter Theta:
-res_array, sf_opt_array = bioen(sim_em_v_data,exp_em_mask,thetas, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+w_opt_array, S_array, chisqrt_array = bioen(sim_em_v_data,exp_em_mask,thetas, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
 
-# Getting optimal weights:
-w_opt_array,fmin_final_array,S_array = bioen_analysis(res_array,thetas)
+# Knee locator
+theta_index = knee_loc(chisqrt_array,S_array)
