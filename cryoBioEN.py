@@ -176,3 +176,13 @@ for i in range(0,10):
     theta_new = list(w_opt_d.keys())[theta_index_new]
     thetas_sorted = np.sort(list(w_opt_d.keys()))[::-1]
     theta_index_sort = np.where(theta_new == thetas_sorted)[0][0]
+
+
+"""
+"" PLOTS
+"""
+# L-CURVE
+plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels)
+
+# WEIGHTS
+plot_weights(w_opt_d,theta_new)
