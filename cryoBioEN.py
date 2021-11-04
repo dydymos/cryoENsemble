@@ -26,7 +26,7 @@ cryoem_param = cryoEM_parameters(map_param)
 """
 # Weights for 1AKE and 4AKE:
 w_1ake = float(sys.argv[2])
-w_4ake = 1 - ake_w
+w_4ake = 1 - w_1ake
 em_weights=np.array([w_1ake,w_4ake])
 
 # map resolution
