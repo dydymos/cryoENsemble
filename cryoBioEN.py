@@ -191,7 +191,7 @@ plot_weights(w_opt_d,theta_new)
 """
 "" CORRELATION with exp map
 """
-cc,cc_prior,cc_single = map_correlations(sim_em_v_data,w_opt_d,w0,theta_new)
+cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new)
 
 """
 "" WRITING POSTERIOR AND PRIOR MAP
