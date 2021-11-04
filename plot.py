@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 
 
-def plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels):
+def plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels,name):
     cmap = plt.cm.get_cmap('rainbow')
     plt.figure(figsize=[6,6])
     N = len(s_dict)
@@ -20,11 +20,11 @@ def plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels):
     y_plot_delta = np.max(chisqrt_array)/N_voxels-np.min(chisqrt_array)/N_voxels
     plt.ylim(np.min(chisqrt_array)/N_voxels-0.05*y_plot_delta,np.max(chisqrt_array)/N_voxels+0.05*y_plot_delta)
     plt.xlim(np.min(-1*s_array)-0.05*x_plot_delta,np.max(-1*s_array)+0.05*x_plot_delta)
-    plt.savefig("l-curve.svg")
+    plt.savefig(name)
 
 
 
-def plot_weights(w_opt_d,theta_new):
+def plot_weights(w_opt_d,theta_new,name):
     cmap = plt.cm.get_cmap('rainbow')
     plt.figure(figsize=[6,6])
     N = len(w_opt_d)
@@ -35,4 +35,4 @@ def plot_weights(w_opt_d,theta_new):
     plt.legend(loc=(1.0,0))
     plt.xlabel("Models")
     plt.ylabel("Weights")
-    plt.savefig("weights.svg")
+    plt.savefig(name)

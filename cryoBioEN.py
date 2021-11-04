@@ -189,6 +189,7 @@ name = "lcurve_"+str(1ake_w)
 plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels,name)
 
 # WEIGHTS
+name = "weights_"+str(1ake_w)
 plot_weights(w_opt_d,theta_new)
 
 """
@@ -200,13 +201,13 @@ cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,th
 "" WRITING POSTERIOR AND PRIOR MAP
 """
 # Saving posterior map
-os.system("rm map_posterior.mrc")
+os.system("rm map_posterior_"+str(1ake_w)+".mrc")
 sim_em_rew = np.dot(sim_em_data.T,w_opt_d[theta_new]).T
-write_map(sim_em_rew,"map_posterior.mrc",map_param)
+write_map(sim_em_rew,"map_posterior_"+str(1ake_w)+".mrc",map_param)
 
-os.system("rm map_prior.mrc")
+os.system("rm map_prior_"+str(1ake_w)+".mrc")
 sim_em_rew = np.dot(sim_em_data.T,w0).T
-write_map(sim_em_rew,"map_prior.mrc",map_param)
+write_map(sim_em_rew,"map_prior_"+str(1ake_w)+".mrc",map_param)
 
 
 print("\n")
