@@ -46,8 +46,8 @@ em_map_threshold = tmp_data.clip(min=0)
 mask_exp = np.where(em_map_threshold > 0)
 
 # Saving map with noise
-os.system("rm map_noise.mrc")
-write_map(em_map_noise,"map_noise.mrc",map_param)
+os.system("rm map_noise_"+str(1ake_w)+".mrc")
+write_map(em_map_noise,"map_noise_"+str(1ake_w)+".mrc",map_param)
 
 """
 "" Fitting structures into density using Situs
@@ -209,13 +209,15 @@ os.system("rm map_prior_"+str(1ake_w)+".mrc")
 sim_em_rew = np.dot(sim_em_data.T,w0).T
 write_map(sim_em_rew,"map_prior_"+str(1ake_w)+".mrc",map_param)
 
-
-print("\n")
-print("Theta value chosen by Kneedle algorithm: ", theta_new)
-print("\n")
-print("Population of 1ake: ", np.round(np.sum(w_opt_d[theta_new][:50]),2))
-print("Population of 4ake: ", np.round(np.sum(w_opt_d[theta_new][50:]),2))
-print("\n")
-print("Posteriori Correlation: ", str(cc))
-print("Priori Correlation: ", str(cc_prior))
-print("Single Best structure Correlation: ", str(cc_single_best))
+"""
+"" WRITING STATISTICS
+"""
+plik = open("statistics.dat","a")
+plik.write("POPULATION of 1AKE in the map: "+str(1ake_w)+"\n")
+plik.write("Theta value chosen by Kneedle algorithm: "+str(theta_new)+"\n")
+plik.write("Population of 1ake: "+str(np.round(np.sum(w_opt_d[theta_new][:50]),2))+"\n")
+plik.write("Population of 4ake: "+str(np.round(np.sum(w_opt_d[theta_new][50:]),2))+"\n")
+plik.write("Posteriori Correlation: "+str(cc)+"\n")
+plik.write("Priori Correlation: "+str(cc_prior)+"\n")
+plik.write("Single Best structure Correlation: "+str(cc_single_best)+"\n")
+plik.write("\n")
