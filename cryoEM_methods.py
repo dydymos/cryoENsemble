@@ -195,3 +195,17 @@ def combine_masks(mask_exp,mask_sim):
     mask_final=np.array([mask_x,mask_y,mask_z])
     mask_final_uniq=(np.unique(mask_final,axis=1)[0],np.unique(mask_final,axis=1)[1],np.unique(mask_final,axis=1)[2])
     return mask_final_uniq
+
+def map_correlations(sim_em_v_data,w_opt_d,w0,theta_new):
+    sim_em_rew = np.dot(sim_em_v_data.T,w_opt_d[theta_new])
+    sim_em_prior = np.dot(sim_em_v_data.T,w0)
+    # Posterior ensemble avg cc
+    cc = np.dot(sim_em_rew,exp_em_mask)/(np.linalg.norm(sim_em_rew)*np.linalg.norm(exp_em_mask))
+    # Prior ensemble avg cc
+    cc_prior = np.dot(sim_em_prior,exp_em_mask)/(np.linalg.norm(sim_em_prior)*np.linalg.norm(exp_em_mask))
+    # Single best strucute CC
+    cc_single = []
+    for i in sim_em_v_data:
+        cc_single.append(np.dot(i,exp_em_mask)/(np.linalg.norm(i)*np.linalg.norm(exp_em_mask)))
+    cc_single_best = np.max(cc_single)
+    return cc,cc_prior, cc_single_best

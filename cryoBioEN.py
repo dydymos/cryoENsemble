@@ -51,16 +51,16 @@ write_map(em_map_noise,"map_noise.mrc",map_param)
 "" Fitting structures into density using Situs
 """
 # Fitting 1ake structures
-#for i in range(1,51):
-# os.system('~/soft/Situs_3.1/bin/colores map_noise.mrc /home/didymos/Linux_05.2021/Projects/BioEN/ADK/1ake/structures/'+str(i)+'_fit.pdb -res 10 -nprocs 6')
-# os.system('mv col_best_001.pdb /home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/1ake/structures/'+str(i)+'_rb_fit.pdb')
-# os.system('rm col_*')
+for i in range(1,51):
+    os.system('~/soft/Situs_3.1/bin/colores map_noise.mrc /home/didymos/Linux_05.2021/Projects/BioEN/ADK/1ake/structures/'+str(i)+'_fit.pdb -res 10 -nprocs 6')
+    os.system('mv col_best_001.pdb /home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/1ake/structures/'+str(i)+'_rb_fit.pdb')
+    os.system('rm col_*')
 
 # Fitting 4ake structures
-#for i in range(1,51):
-# os.system('~/soft/Situs_3.1/bin/colores map_noise.mrc /home/didymos/Linux_05.2021/Projects/BioEN/ADK/4ake/structures/'+str(i)+'_fit.pdb -res 10 -nprocs 6')
-# os.system('mv col_best_001.pdb /home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/4ake/structures/'+str(i)+'_rb_fit.pdb')
-# os.system('rm col_*')
+for i in range(1,51):
+    os.system('~/soft/Situs_3.1/bin/colores map_noise.mrc /home/didymos/Linux_05.2021/Projects/BioEN/ADK/4ake/structures/'+str(i)+'_fit.pdb -res 10 -nprocs 6')
+    os.system('mv col_best_001.pdb /home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/4ake/structures/'+str(i)+'_rb_fit.pdb')
+    os.system('rm col_*')
 
 """
 "" STRUCTURAL ENSEMBLE
@@ -186,3 +186,31 @@ plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels)
 
 # WEIGHTS
 plot_weights(w_opt_d,theta_new)
+
+"""
+"" CORRELATION with exp map
+"""
+cc,cc_prior,cc_single = map_correlations(sim_em_v_data,w_opt_d,w0,theta_new)
+
+"""
+"" WRITING POSTERIOR AND PRIOR MAP
+"""
+# Saving posterior map
+os.system("rm map_posterior.mrc")
+sim_em_rew = np.dot(sim_em_data.T,w_opt_d[theta_new]).T
+write_map(sim_em_rew,"map_posterior.mrc",map_param)
+
+os.system("rm map_prior.mrc")
+sim_em_rew = np.dot(sim_em_data.T,w0).T
+write_map(sim_em_rew,"map_prior.mrc",map_param)
+
+
+print("\n")
+print("Theta value chosen by Kneedle algorithm: ", theta_new)
+print("\n")
+print("Population of 1ake: ", np.round(np.sum(w_opt_d[theta_new][:50]),2))
+print("Population of 4ake: ", np.round(np.sum(w_opt_d[theta_new][50:]),2))
+print("\n")
+print("Posteriori Correlation: ", str(cc))
+print("Priori Correlation: ", str(cc_prior))
+print("Single Best structure Correlation: ", str(cc_single_best))
