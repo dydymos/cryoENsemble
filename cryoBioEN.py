@@ -9,10 +9,10 @@ from plot import *
 
 """
 
-USE: cryoBioEN.py ADK.mrc w1 w2 resolution noise
+USE: cryoBioEN.py ADK.mrc w1 resolution noise
 
 w1 - weights for 1AKE
-w2 - weights for 4AKE
+w2 - weights for 4AKE = 1 - w1
 
 """
 
@@ -25,16 +25,18 @@ cryoem_param = cryoEM_parameters(map_param)
 "" Creating average EM map
 """
 # Weights for 1AKE and 4AKE:
-em_weights=np.array([float(sys.argv[2]),float(sys.argv[3])])
+1ake_w = float(sys.argv[2])
+4ake_w = 1 - 1ake_w
+em_weights=np.array([1ake_w,4ake_w])
 
 # map resolution
-sigma = float(sys.argv[4])*0.225
+sigma = float(sys.argv[3])*0.225
 
 # average map
 em_map = pdb2map_avg(em_weights,sigma,["1ake.pdb","4ake_aln.pdb"],map_param,cryoem_param)
 
 # map with noise plus map threshold which equals 3 x noise_std
-noise = float(sys.argv[5])
+noise = float(sys.argv[4])
 em_map_noise,em_threshold = add_noise(em_map,noise)
 
 # Mask of the EM map (where the density is > threshold)
@@ -183,7 +185,8 @@ for i in range(0,10):
 "" PLOTS
 """
 # L-CURVE
-plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels)
+name = "lcurve_"+str(1ake_w)
+plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels,name)
 
 # WEIGHTS
 plot_weights(w_opt_d,theta_new)
