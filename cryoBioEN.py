@@ -132,8 +132,8 @@ sf_start = leastsq(coeff_fit, sf_init, args=(w0,std,sim_em_v_data,exp_em_mask))[
 
 # For now we can only use BFGS algorithm as is coded in SCIPY
 
-epsilon = 0.1
-pgtol = 0.1
+epsilon = 1e-08
+pgtol = 1e-05
 maxiter = 5000
 
 # Number of iterations
