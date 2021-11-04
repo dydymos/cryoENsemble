@@ -161,6 +161,7 @@ for th in thetas:
 theta_index = knee_loc(list(s_dict.values()),list(chisqrt_d.values()))
 theta_knee = thetas[theta_index]
 theta_index_sort = theta_index
+
 for i in range(0,10):
     thetas_old = np.sort(list(w_opt_d.keys()))[::-1]
     theta_up = (thetas_old[theta_index_sort - 1] + thetas_old[theta_index_sort])/2.
