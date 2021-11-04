@@ -25,9 +25,9 @@ cryoem_param = cryoEM_parameters(map_param)
 "" Creating average EM map
 """
 # Weights for 1AKE and 4AKE:
-1ake_w = float(sys.argv[2])
-4ake_w = 1 - 1ake_w
-em_weights=np.array([1ake_w,4ake_w])
+w_1ake = float(sys.argv[2])
+w_4ake = 1 - ake_w
+em_weights=np.array([w_1ake,w_4ake])
 
 # map resolution
 sigma = float(sys.argv[3])*0.225
@@ -46,8 +46,8 @@ em_map_threshold = tmp_data.clip(min=0)
 mask_exp = np.where(em_map_threshold > 0)
 
 # Saving map with noise
-os.system("rm map_noise_"+str(1ake_w)+".mrc")
-write_map(em_map_noise,"map_noise_"+str(1ake_w)+".mrc",map_param)
+os.system("rm map_noise_"+str(w_1ake)+".mrc")
+write_map(em_map_noise,"map_noise_"+str(w_1ake)+".mrc",map_param)
 
 """
 "" Fitting structures into density using Situs
@@ -185,11 +185,11 @@ for i in range(0,10):
 "" PLOTS
 """
 # L-CURVE
-name = "lcurve_"+str(1ake_w)
+name = "lcurve_"+str(w_1ake)
 plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels,name)
 
 # WEIGHTS
-name = "weights_"+str(1ake_w)
+name = "weights_"+str(w_1ake)
 plot_weights(w_opt_d,theta_new)
 
 """
@@ -201,19 +201,19 @@ cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,th
 "" WRITING POSTERIOR AND PRIOR MAP
 """
 # Saving posterior map
-os.system("rm map_posterior_"+str(1ake_w)+".mrc")
+os.system("rm map_posterior_"+str(w_1ake)+".mrc")
 sim_em_rew = np.dot(sim_em_data.T,w_opt_d[theta_new]).T
-write_map(sim_em_rew,"map_posterior_"+str(1ake_w)+".mrc",map_param)
+write_map(sim_em_rew,"map_posterior_"+str(w_1ake)+".mrc",map_param)
 
-os.system("rm map_prior_"+str(1ake_w)+".mrc")
+os.system("rm map_prior_"+str(w_1ake)+".mrc")
 sim_em_rew = np.dot(sim_em_data.T,w0).T
-write_map(sim_em_rew,"map_prior_"+str(1ake_w)+".mrc",map_param)
+write_map(sim_em_rew,"map_prior_"+str(w_1ake)+".mrc",map_param)
 
 """
 "" WRITING STATISTICS
 """
 plik = open("statistics.dat","a")
-plik.write("POPULATION of 1AKE in the map: "+str(1ake_w)+"\n")
+plik.write("POPULATION of 1AKE in the map: "+str(w_1ake)+"\n")
 plik.write("Theta value chosen by Kneedle algorithm: "+str(theta_new)+"\n")
 plik.write("Population of 1ake: "+str(np.round(np.sum(w_opt_d[theta_new][:50]),2))+"\n")
 plik.write("Population of 4ake: "+str(np.round(np.sum(w_opt_d[theta_new][50:]),2))+"\n")
