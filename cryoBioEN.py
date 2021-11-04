@@ -132,8 +132,8 @@ sf_start = leastsq(coeff_fit, sf_init, args=(w0,std,sim_em_v_data,exp_em_mask))[
 
 # For now we can only use BFGS algorithm as is coded in SCIPY
 
-epsilon = 0.1
-pgtol = 0.1
+epsilon = 1e-08
+pgtol = 1e-05
 maxiter = 5000
 
 # Number of iterations
@@ -191,7 +191,7 @@ plot_weights(w_opt_d,theta_new)
 """
 "" CORRELATION with exp map
 """
-cc,cc_prior,cc_single = map_correlations(sim_em_v_data,w_opt_d,w0,theta_new)
+cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new)
 
 """
 "" WRITING POSTERIOR AND PRIOR MAP

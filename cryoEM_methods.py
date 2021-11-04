@@ -196,7 +196,7 @@ def combine_masks(mask_exp,mask_sim):
     mask_final_uniq=(np.unique(mask_final,axis=1)[0],np.unique(mask_final,axis=1)[1],np.unique(mask_final,axis=1)[2])
     return mask_final_uniq
 
-def map_correlations(sim_em_v_data,w_opt_d,w0,theta_new):
+def map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new):
     sim_em_rew = np.dot(sim_em_v_data.T,w_opt_d[theta_new])
     sim_em_prior = np.dot(sim_em_v_data.T,w0)
     # Posterior ensemble avg cc
