@@ -4,6 +4,7 @@ import mrcfile
 
 
 
+
 def reference_map(map):
     """
     Loads simulated EM map from the open state structure
