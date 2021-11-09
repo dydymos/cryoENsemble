@@ -9,7 +9,7 @@ from plot import *
 
 """
 
-USE: cryoBioEN.py NC.mrc resolution noise
+USE: cryoBioEN.py resolution noise
 
 """
 
@@ -21,11 +21,9 @@ cryoem_param = cryoEM_parameters(map_param)
 """
 "" Creating average EM map
 """
-# Weights for 1AKE and 4AKE:
-em_weights=np.array([float(sys.argv[2]),float(sys.argv[3])])
 
 # map resolution
-sigma = float(sys.argv[4])*0.225
+sigma = float(sys.argv[1])*0.225
 
 # average map
 em_map = pdb2map_avg(em_weights,sigma,["1ake.pdb","4ake_aln.pdb"],map_param,cryoem_param)
