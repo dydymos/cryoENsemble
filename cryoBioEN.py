@@ -9,10 +9,7 @@ from plot import *
 
 """
 
-USE: cryoBioEN.py ADK.mrc w1 w2 resolution noise
-
-w1 - weights for 1AKE
-w2 - weights for 4AKE
+USE: cryoBioEN.py NC.mrc resolution noise
 
 """
 
