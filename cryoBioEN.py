@@ -9,7 +9,7 @@ from plot import *
 
 """
 
-"" USE: cryoBioEN.py ref_map.mrc resolution noise
+"" USE: cryoBioEN.py ref_map.mrc resolution noise ID
 
 """
 
@@ -32,7 +32,9 @@ random_pdbs, rlist = random_pdbs(path,M)
 em_weights=np.zeros(M)+0.1
 em_map = pdb2map_avg(em_weights,sigma,random_pdbs,map_param,cryoem_param)
 # writing weights
-np.savetxt("random_list.dat",rlist,newline=" ",fmt="%i")
+with open("random_list.dat", "a") as f:
+    f.write("\n")
+    np.savetxt(f,rlist,newline=" ",fmt="%i")
 
 # map with noise plus map threshold which equals 3 x noise_std
 noise = float(sys.argv[3])
@@ -44,9 +46,11 @@ tmp_data = em_map_noise - em_threshold
 em_map_threshold = tmp_data.clip(min=0)
 mask_exp = np.where(em_map_threshold > 0)
 
+# ID
+ID = sys.argv[4]
 # Saving map with noise
-os.system("rm map_noise.mrc")
-write_map(em_map_noise,"map_noise.mrc",map_param)
+os.system("rm map_noise_"+str(ID)+".mrc")
+write_map(em_map_noise,"map_noise_"+str(ID)+".mrc",map_param)
 
 """
 "" STRUCTURAL ENSEMBLE
@@ -167,10 +171,13 @@ for i in range(0,10):
 "" PLOTS
 """
 # L-CURVE
-plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels)
+plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels,ID)
+
+# Neff
+plot_Neff(s_dict,chisqrt_d,theta_new,N_voxels,ID)
 
 # WEIGHTS
-plot_weights(w_opt_d,theta_new)
+plot_weights(w_opt_d,theta_new,ID)
 
 """
 "" CORRELATION with exp map
@@ -181,18 +188,19 @@ cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,th
 "" WRITING POSTERIOR AND PRIOR MAP
 """
 # Saving posterior map
-os.system("rm map_posterior.mrc")
+os.system("rm map_posterior_"+str(ID)+".mrc")
 sim_em_rew = np.dot(sim_em_data.T,w_opt_d[theta_new]).T
-write_map(sim_em_rew,"map_posterior.mrc",map_param)
+write_map(sim_em_rew,"map_posterior_"+str(ID)+".mrc",map_param)
 
-os.system("rm map_prior.mrc")
+os.system("rm map_prior_"+str(ID)+".mrc")
 sim_em_rew = np.dot(sim_em_data.T,w0).T
-write_map(sim_em_rew,"map_prior.mrc",map_param)
+write_map(sim_em_rew,"map_prior_"+str(ID)+".mrc",map_param)
 
+file = open("statistics.dat", "a")
 
-print("\n")
-print("Theta value chosen by Kneedle algorithm: ", theta_new)
-print("\n")
-print("Posteriori Correlation: ", str(cc))
-print("Priori Correlation: ", str(cc_prior))
-print("Single Best structure Correlation: ", str(cc_single))
+file.write("Theta value chosen by Kneedle algorithm: "+str(theta_new)+"\n")
+file.write("Reduced Chisqrt: " + str(chisqrt_d[theta_new]/N_voxels)+"\n")
+file.write("Neff: " + str(np.exp(s_dict[theta_new]))+"\n")
+file.write("Posteriori Correlation: " + str(cc)+"\n")
+file.write("Priori Correlation: " + str(cc_prior)+"\n")
+file.write("Single Best structure Correlation: " + str(cc_single)+"\n")
