@@ -7,7 +7,7 @@ import mrcfile
 
 def reference_map(map):
     """
-    Loads simulated EM map from the open state structure
+    Simulated EM map from random model
     We are using it to get initial number of voxels per xyz and voxel size
     This map has been generated in chimerax with 10A
     """

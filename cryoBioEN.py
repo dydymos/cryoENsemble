@@ -4,12 +4,12 @@ import glob
 import numpy as np
 from bioEN_functions import *
 from cryoEM_methods import *
-from reference_map_ADK import *
+from reference_map import *
 from plot import *
 
 """
 
-USE: cryoBioEN.py resolution noise
+"" USE: cryoBioEN.py ref_map.mrc resolution noise
 
 """
 
@@ -23,13 +23,19 @@ cryoem_param = cryoEM_parameters(map_param)
 """
 
 # map resolution
-sigma = float(sys.argv[1])*0.225
+sigma = float(sys.argv[2])*0.225
 
-# average map
-em_map = pdb2map_avg(em_weights,sigma,["1ake.pdb","4ake_aln.pdb"],map_param,cryoem_param)
+# average map map generate from randomly chosen 10 maps
+M = 10
+path = "/home/didymos/Linux_05.2021/Projects/BioEN/NC/minim"
+random_pdbs, rlist = random_pdbs(path,M)
+em_weights=np.zeros(M)+0.1
+em_map = pdb2map_avg(em_weights,sigma,random_pdbs,map_param,cryoem_param)
+# writing weights
+np.savetxt("random_list.dat",rlist,newline=" ",fmt="%i")
 
 # map with noise plus map threshold which equals 3 x noise_std
-noise = float(sys.argv[5])
+noise = float(sys.argv[3])
 em_map_noise,em_threshold = add_noise(em_map,noise)
 
 # Mask of the EM map (where the density is > threshold)
@@ -43,35 +49,18 @@ os.system("rm map_noise.mrc")
 write_map(em_map_noise,"map_noise.mrc",map_param)
 
 """
-"" Fitting structures into density using Situs
-"""
-# Fitting 1ake structures
-for i in range(1,51):
-    os.system('~/soft/Situs_3.1/bin/colores map_noise.mrc /home/didymos/Linux_05.2021/Projects/BioEN/ADK/1ake/structures/'+str(i)+'_fit.pdb -res 10 -nprocs 6')
-    os.system('mv col_best_001.pdb /home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/1ake/structures/'+str(i)+'_rb_fit.pdb')
-    os.system('rm col_*')
-
-# Fitting 4ake structures
-for i in range(1,51):
-    os.system('~/soft/Situs_3.1/bin/colores map_noise.mrc /home/didymos/Linux_05.2021/Projects/BioEN/ADK/4ake/structures/'+str(i)+'_fit.pdb -res 10 -nprocs 6')
-    os.system('mv col_best_001.pdb /home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/4ake/structures/'+str(i)+'_rb_fit.pdb')
-    os.system('rm col_*')
-
-"""
 "" STRUCTURAL ENSEMBLE
 """
 
-# OK Now we read models from 1ake and 4ake
-# We use 50 model from 1ake and 50 models from 4ake
+# OK Now we read 100 models previously minimized
 
 # Number of structures/models
 N_models = 100
 
-PDBs_1ake = glob.glob("/home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/1ake/structures/*rb_fit.pdb")[:50]
-PDBs_4ake = glob.glob("/home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/4ake/structures/*rb_fit.pdb")[:50]
+PDBs = []
 
-# PDB files
-PDBs=PDBs_1ake+PDBs_4ake
+for i in range(1,101):
+   PDBs.append(path+"/minim_"+str(i)+'.pdb')
 
 # Generating array of EM maps based on structures
 sim_em_data = np.array(pdb2map_array(PDBs,sigma,map_param,cryoem_param))
@@ -204,9 +193,6 @@ write_map(sim_em_rew,"map_prior.mrc",map_param)
 print("\n")
 print("Theta value chosen by Kneedle algorithm: ", theta_new)
 print("\n")
-print("Population of 1ake: ", np.round(np.sum(w_opt_d[theta_new][:50]),2))
-print("Population of 4ake: ", np.round(np.sum(w_opt_d[theta_new][50:]),2))
-print("\n")
 print("Posteriori Correlation: ", str(cc))
 print("Priori Correlation: ", str(cc_prior))
-print("Single Best structure Correlation: ", str(cc_single_best))
+print("Single Best structure Correlation: ", str(cc_single))
