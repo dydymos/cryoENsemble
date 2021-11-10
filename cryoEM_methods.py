@@ -183,10 +183,6 @@ def pdb2map_avg(weights,sigma,PDBs,map_param,cryoem_param):
                         data[k][j][i] += pref * np.exp(-0.5 * dist * invsig2 / (sigma**2))
     return data
 
-def random_pdbs(path,N):
-    random_models = sample(range(1,101), N)
-    random_models_pdb = [path+"/minim_"+str(i)+".pdb" for i in random_models]
-    return random_models_pdb, random_models
 
 def add_noise(map, noise):
     """

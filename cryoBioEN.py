@@ -9,7 +9,10 @@ from plot import *
 
 """
 
-"" USE: cryoBioEN.py ref_map.mrc resolution noise ID
+"" USE: cryoBioEN.py ref_map.mrc resolution noise masktype ID
+"" masktype:
+"" - exp -> using only voxels from experimental EM map
+"" - sim -> using both voxels from experimental EM map and generated from ensemble 
 
 """
 
@@ -26,15 +29,19 @@ cryoem_param = cryoEM_parameters(map_param)
 sigma = float(sys.argv[2])*0.225
 
 # average map map generate from randomly chosen 10 maps
+# ID
+ID = int(sys.argv[5])
+
+# Number of models
 M = 10
 path = "/home/didymos/Linux_05.2021/Projects/BioEN/NC/minim"
-random_pdbs, rlist = random_pdbs(path,M)
+
+random_list = np.loadtxt("random_list.dat")
+
+random_pdbs = [path+"/minim_"+str(int(x))+".pdb" for x in random_list[ID-1]]
+
 em_weights=np.zeros(M)+0.1
 em_map = pdb2map_avg(em_weights,sigma,random_pdbs,map_param,cryoem_param)
-# writing weights
-with open("random_list.dat", "a") as f:
-    f.write("\n")
-    np.savetxt(f,rlist,newline=" ",fmt="%i")
 
 # map with noise plus map threshold which equals 3 x noise_std
 noise = float(sys.argv[3])
@@ -46,8 +53,6 @@ tmp_data = em_map_noise - em_threshold
 em_map_threshold = tmp_data.clip(min=0)
 mask_exp = np.where(em_map_threshold > 0)
 
-# ID
-ID = sys.argv[4]
 # Saving map with noise
 os.system("rm map_noise_"+str(ID)+".mrc")
 write_map(em_map_noise,"map_noise_"+str(ID)+".mrc",map_param)
@@ -74,6 +79,8 @@ sim_em_data = np.array(pdb2map_array(PDBs,sigma,map_param,cryoem_param))
 "" MASKING
 """
 
+mask = sys.argv[4]
+if (mask == "exp")
 # Array with experimental mask
 #mask_exp_array=np.array(mask_exp)
 
