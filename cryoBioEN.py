@@ -12,7 +12,7 @@ from plot import *
 "" USE: cryoBioEN.py ref_map.mrc resolution noise masktype ID
 "" masktype:
 "" - exp -> using only voxels from experimental EM map
-"" - sim -> using both voxels from experimental EM map and generated from ensemble 
+"" - sim -> using both voxels from experimental EM map and generated from ensemble
 
 """
 
@@ -80,26 +80,29 @@ sim_em_data = np.array(pdb2map_array(PDBs,sigma,map_param,cryoem_param))
 """
 
 mask = sys.argv[4]
-if (mask == "exp")
-# Array with experimental mask
-#mask_exp_array=np.array(mask_exp)
+if (mask == "exp"):
+    # Masked experimental data
+    exp_em_mask = em_map_threshold[mask_exp]
+    # Number of non-zero voxels
+    N_voxels=np.shape(mask_exp)[1]
+    # New simulated map with only voxels corresponding to the experimental signal
+    sim_em_v_data=np.zeros([N_models,N_voxels])
+    for i in range(0,N_models):
+        sim_em_v_data[i]=sim_em_data[i][mask_exp]
 
-# mask for simulated maps
-#mask_sim = mask_sim_gen(sim_em_data,N_models)
-
-# Geting combined voxels from exp and from sim structures
-#mask_comb = combine_masks(mask_exp_array,mask_sim)
-
-# Masked experimental data
-exp_em_mask = em_map_threshold[mask_exp]
-
-# Number of non-zero voxels
-N_voxels=np.shape(mask_exp)[1]
-
-# New simulated map with only voxels corresponding to the experimental signal
-sim_em_v_data=np.zeros([N_models,N_voxels])
-for i in range(0,N_models):
-    sim_em_v_data[i]=sim_em_data[i][mask_exp]
+elif (mask == "sim"):
+    # Masked experimental data
+    mask_exp_array=np.array(mask_exp)
+    mask_sim = mask_sim_gen(sim_em_data,N_models)
+    mask_comb = combine_masks(mask_exp_array,mask_sim)
+    # Number of non-zero voxels
+    N_voxels=np.shape(mask_comb)[1]
+    # Masked experimental data
+    exp_em_mask = em_map_threshold[mask_comb]
+    # New simulated map with only voxels corresponding to the exp+sim
+    sim_em_v_data=np.zeros([N_models,N_voxels])
+    for i in range(0,N_models):
+        sim_em_v_data[i]=sim_em_data[i][mask_comb]
 
 """
 "" Optimization via Log-Weights as in Kofinger et. al 2019
@@ -189,7 +192,19 @@ plot_weights(w_opt_d,theta_new,ID)
 """
 "" CORRELATION with exp map
 """
-cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new)
+if (mask == "exp"):
+    cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new)
+elif (mask == "sim"):
+    exp_em_mask_cc = em_map_threshold[mask_exp]
+    N_voxels_cc=np.shape(mask_exp)[1]
+    # New simulated map with only voxels corresponding to the experimental signal
+    sim_em_v_data_cc=np.zeros([N_models,N_voxels_cc])
+    for i in range(0,N_models):
+        sim_em_v_data_cc[i]=sim_em_data[i][mask_exp]
+    cc,cc_prior,cc_single = map_correlations(sim_em_v_data_cc,exp_em_mask_cc,w_opt_d,w0,theta_new)
+
+# TOP 10
+best = np.argsort(w_opt_d[theta_new])[::-1][:10]+1
 
 """
 "" WRITING POSTERIOR AND PRIOR MAP
@@ -211,3 +226,5 @@ file.write("Neff: " + str(np.exp(s_dict[theta_new]))+"\n")
 file.write("Posteriori Correlation: " + str(cc)+"\n")
 file.write("Priori Correlation: " + str(cc_prior)+"\n")
 file.write("Single Best structure Correlation: " + str(cc_single)+"\n")
+np.savetxt(file,best,newline=" ",fmt="%i")
+file.writ("\n")
