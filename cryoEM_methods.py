@@ -220,7 +220,7 @@ def mask_sim_gen(sim_em_data,N_models):
     mask_x = []
     mask_y = []
     mask_z = []
-    threshold = np.max(sim_em_data)*0.01
+    threshold = np.max(sim_em_data)*0.1
     for i in range(0,N_models):
         mask_x+=np.where(sim_em_data[i]>threshold)[0].tolist()
         mask_y+=np.where(sim_em_data[i]>threshold)[1].tolist()

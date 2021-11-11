@@ -205,6 +205,11 @@ elif (mask == "sim"):
 
 # TOP 10
 best = np.argsort(w_opt_d[theta_new])[::-1][:10]+1
+best_ratio = 0
+for i in best:
+    if i in random_list[ID-1]: best_ratio+=1
+
+best_ratio/=10.0
 
 """
 "" WRITING POSTERIOR AND PRIOR MAP
@@ -227,4 +232,5 @@ file.write("Posteriori Correlation: " + str(cc)+"\n")
 file.write("Priori Correlation: " + str(cc_prior)+"\n")
 file.write("Single Best structure Correlation: " + str(cc_single)+"\n")
 np.savetxt(file,best,newline=" ",fmt="%i")
-file.writ("\n")
+file.write("\n")
+file.write("How many true models are in top10: "+str(best_ratio*100)+"%\n" )
