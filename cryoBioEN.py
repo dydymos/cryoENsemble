@@ -9,7 +9,7 @@ from plot import *
 
 """
 
-USE: cryoBioEN.py ADK.mrc w1 resolution noise
+USE: cryoBioEN.py ADK.mrc w1 resolution noise mask
 
 w1 - weights for 1AKE
 w2 - weights for 4AKE = 1 - w1
@@ -88,25 +88,31 @@ sim_em_data = np.array(pdb2map_array(PDBs,sigma,map_param,cryoem_param))
 "" MASKING
 """
 
-# Array with experimental mask
-#mask_exp_array=np.array(mask_exp)
+mask = sys.argv[5]
+if (mask == "exp"):
+    # Masked experimental data
+    exp_em_mask = em_map_threshold[mask_exp]
+    # Number of non-zero voxels
+    N_voxels=np.shape(mask_exp)[1]
+    # New simulated map with only voxels corresponding to the experimental signal
+    sim_em_v_data=np.zeros([N_models,N_voxels])
+    for i in range(0,N_models):
+        sim_em_v_data[i]=sim_em_data[i][mask_exp]
 
-# mask for simulated maps
-#mask_sim = mask_sim_gen(sim_em_data,N_models)
 
-# Geting combined voxels from exp and from sim structures
-#mask_comb = combine_masks(mask_exp_array,mask_sim)
-
-# Masked experimental data
-exp_em_mask = em_map_threshold[mask_exp]
-
-# Number of non-zero voxels
-N_voxels=np.shape(mask_exp)[1]
-
-# New simulated map with only voxels corresponding to the experimental signal
-sim_em_v_data=np.zeros([N_models,N_voxels])
-for i in range(0,N_models):
-    sim_em_v_data[i]=sim_em_data[i][mask_exp]
+elif (mask == "sim"):
+    # Masked experimental data
+    mask_exp_array=np.array(mask_exp)
+    mask_sim = mask_sim_gen(sim_em_data,N_models)
+    mask_comb = combine_masks(mask_exp_array,mask_sim)
+    # Number of non-zero voxels
+    N_voxels=np.shape(mask_comb)[1]
+    # Masked experimental data
+    exp_em_mask = em_map_threshold[mask_comb]
+    # New simulated map with only voxels corresponding to the exp+sim
+    sim_em_v_data=np.zeros([N_models,N_voxels])
+    for i in range(0,N_models):
+        sim_em_v_data[i]=sim_em_data[i][mask_comb]
 
 """
 "" Optimization via Log-Weights as in Kofinger et. al 2019
@@ -197,6 +203,9 @@ plot_weights(w_opt_d,theta_new)
 """
 cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new)
 
+# TOP 1 structure
+best = np.argsort(w_opt_d[theta_new])[::-1][0]
+
 """
 "" WRITING POSTERIOR AND PRIOR MAP
 """
@@ -220,4 +229,5 @@ plik.write("Population of 4ake: "+str(np.round(np.sum(w_opt_d[theta_new][50:]),2
 plik.write("Posteriori Correlation: "+str(cc)+"\n")
 plik.write("Priori Correlation: "+str(cc_prior)+"\n")
 plik.write("Single Best structure Correlation: "+str(cc_single_best)+"\n")
+plik.write("Single Best structure: "+str(PDBs[best])+"\n")
 plik.write("\n")

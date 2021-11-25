@@ -174,10 +174,11 @@ def mask_sim_gen(sim_em_data,N_models):
     mask_x = []
     mask_y = []
     mask_z = []
+    threshold = np.max(sim_em_data)*0.1
     for i in range(0,N_models):
-        mask_x+=np.where(sim_em_data[i]>0)[0].tolist()
-        mask_y+=np.where(sim_em_data[i]>0)[1].tolist()
-        mask_z+=np.where(sim_em_data[i]>0)[2].tolist()
+        mask_x+=np.where(sim_em_data[i]>threshold)[0].tolist()
+        mask_y+=np.where(sim_em_data[i]>threshold)[1].tolist()
+        mask_z+=np.where(sim_em_data[i]>threshold)[2].tolist()
     mask_sim=np.array([mask_x,mask_y,mask_z])
     mask_sim_uniq=np.unique(mask_sim,axis=1)
     return mask_sim_uniq
