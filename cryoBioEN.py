@@ -192,19 +192,13 @@ plot_weights(w_opt_d,theta_new,ID)
 """
 "" CORRELATION with exp map
 """
-if (mask == "exp"):
-    cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new)
-elif (mask == "sim"):
-    exp_em_mask_cc = em_map_threshold[mask_exp]
-    N_voxels_cc=np.shape(mask_exp)[1]
-    # New simulated map with only voxels corresponding to the experimental signal
-    sim_em_v_data_cc=np.zeros([N_models,N_voxels_cc])
-    for i in range(0,N_models):
-        sim_em_v_data_cc[i]=sim_em_data[i][mask_exp]
-    cc,cc_prior,cc_single = map_correlations(sim_em_v_data_cc,exp_em_mask_cc,w_opt_d,w0,theta_new)
+
+cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new)
 
 # TOP 10
 best = np.argsort(w_opt_d[theta_new])[::-1][:10]+1
+best_single = np.argsort(w_opt_d[theta_new])[::-1][0]
+
 best_ratio = 0
 for i in best:
     if i in random_list[ID-1]: best_ratio+=1
@@ -231,6 +225,7 @@ file.write("Neff: " + str(np.exp(s_dict[theta_new]))+"\n")
 file.write("Posteriori Correlation: " + str(cc)+"\n")
 file.write("Priori Correlation: " + str(cc_prior)+"\n")
 file.write("Single Best structure Correlation: " + str(cc_single)+"\n")
+file.write("Single Best structure: " + str(PDBs[best_single])+"\n")
 np.savetxt(file,best,newline=" ",fmt="%i")
 file.write("\n")
 file.write("How many true models are in top10: "+str(best_ratio*100)+"%\n" )
