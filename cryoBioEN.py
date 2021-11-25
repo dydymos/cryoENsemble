@@ -199,9 +199,11 @@ name = "weights_"+str(w_1ake)
 plot_weights(w_opt_d,theta_new)
 
 """
-"" CORRELATION with exp map
+"" CORRELATION with exp map - we always use the whole dataset to calculate (so either only exp map or both exp and sim)
 """
-cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new)
+
+cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask_cc,w_opt_d,w0,theta_new)
+
 
 # TOP 1 structure
 best = np.argsort(w_opt_d[theta_new])[::-1][0]
