@@ -191,11 +191,11 @@ for i in range(0,10):
 "" PLOTS
 """
 # L-CURVE
-name = "lcurve_"+str(w_1ake)
+name = "lcurve_"+str(int(w_1ake))
 plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels,name)
 
 # WEIGHTS
-name = "weights_"+str(w_1ake)
+name = "weights_"+str(int(w_1ake))
 plot_weights(w_opt_d,theta_new)
 
 """
@@ -230,6 +230,6 @@ plik.write("Population of 1ake: "+str(np.round(np.sum(w_opt_d[theta_new][:50]),2
 plik.write("Population of 4ake: "+str(np.round(np.sum(w_opt_d[theta_new][50:]),2))+"\n")
 plik.write("Posteriori Correlation: "+str(cc)+"\n")
 plik.write("Priori Correlation: "+str(cc_prior)+"\n")
-plik.write("Single Best structure Correlation: "+str(cc_single_best)+"\n")
+plik.write("Single Best structure Correlation: "+str(cc_single)+"\n")
 plik.write("Single Best structure: "+str(PDBs[best])+"\n")
 plik.write("\n")
