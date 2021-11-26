@@ -196,7 +196,7 @@ plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels,name)
 
 # WEIGHTS
 name = "weights_"+str(int(w_1ake))
-plot_weights(w_opt_d,theta_new)
+plot_weights(w_opt_d,theta_new,name)
 
 """
 "" CORRELATION with exp map - we always use the whole dataset to calculate (so either only exp map or both exp and sim)
