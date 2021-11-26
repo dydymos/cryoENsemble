@@ -191,11 +191,11 @@ for i in range(0,10):
 "" PLOTS
 """
 # L-CURVE
-name = "lcurve_"+str(float(w_1ake)+".svg")
+name = "lcurve_"+str(float(w_1ake))+".svg")
 plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels,name)
 
 # WEIGHTS
-name = "weights_"+str(float(w_1ake)+".svg")
+name = "weights_"+str(float(w_1ake))+".svg")
 plot_weights(w_opt_d,theta_new,name)
 
 """
