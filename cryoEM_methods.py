@@ -205,7 +205,7 @@ def map_correlations(sim_em_data,em_map_threshold,w_opt_d,w0,theta_new):
     cc_prior = np.dot(sim_em_prior,em_map_threshold.flatten())/(np.linalg.norm(sim_em_prior)*np.linalg.norm(em_map_threshold.flatten()))
     # Single best strucute CC
     cc_single = []
-    for i in sim_em_v_data:
+    for i in sim_em_data:
         cc_single.append(np.dot(i.flatten(),em_map_threshold.flatten())/(np.linalg.norm(i.flatten())*np.linalg.norm(em_map_threshold.flatten())))
     cc_single_best = np.max(cc_single)
     return cc,cc_prior, cc_single_best

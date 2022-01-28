@@ -68,13 +68,13 @@ write_map(em_map_threshold,"map_thr_"+str(w_1ake)+".mrc",map_param)
 """
 # Fitting 1ake structures
 for i in range(1,51):
-    os.system('~/soft/Situs_3.1/bin/colores map_noise.mrc /home/didymos/Linux_05.2021/Projects/BioEN/ADK/1ake/structures/'+str(i)+'_fit.pdb -res 10 -nprocs 6')
+    os.system('~/soft/Situs_3.1/bin/colores map_thr_'+str(w_1ake)+'.mrc /home/didymos/Linux_05.2021/Projects/BioEN/ADK/1ake/structures/'+str(i)+'_fit.pdb -res 10 -nprocs 6')
     os.system('mv col_best_001.pdb /home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/1ake/structures/'+str(i)+'_rb_fit.pdb')
     os.system('rm col_*')
 
 # Fitting 4ake structures
 for i in range(1,51):
-    os.system('~/soft/Situs_3.1/bin/colores map_noise.mrc /home/didymos/Linux_05.2021/Projects/BioEN/ADK/4ake/structures/'+str(i)+'_fit.pdb -res 10 -nprocs 6')
+    os.system('~/soft/Situs_3.1/bin/colores map_thr_'+str(w_1ake)+'.mrc /home/didymos/Linux_05.2021/Projects/BioEN/ADK/4ake/structures/'+str(i)+'_fit.pdb -res 10 -nprocs 6')
     os.system('mv col_best_001.pdb /home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/4ake/structures/'+str(i)+'_rb_fit.pdb')
     os.system('rm col_*')
 
