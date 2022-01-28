@@ -88,14 +88,20 @@ for i in range(1,51):
 # Number of structures/models
 N_models = 100
 
-PDBs_1ake = glob.glob("/home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/1ake/structures/*rb_fit.pdb")[:50]
-PDBs_4ake = glob.glob("/home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/4ake/structures/*rb_fit.pdb")[:50]
+PDBs_1ake = glob.glob("tmp/1ake/*rb_fit.pdb")[:50]
+PDBs_4ake = glob.glob("tmp/4ake/*rb_fit.pdb")[:50]
 
 # PDB files
 PDBs=PDBs_1ake+PDBs_4ake
 
 # Generating array of EM maps based on structures
-sim_em_data = np.array(pdb2map_array(PDBs,sigma,map_param,cryoem_param))
+sim_em_data = np.array(pdb2map_array(PDBs,sigma_sim,map_param,cryoem_param))
+
+# sim_map = np.sum(sim_em_data,0)
+
+# Saving normalized map with noise and without negative density
+# os.system("rm map_sim_"+str(w_1ake)+".mrc")
+# write_map(sim_map,"map_sim_"+str(w_1ake)+".mrc",map_param)
 
 
 """
@@ -117,6 +123,7 @@ if (mask == "exp"):
 elif (mask == "sim"):
     # Masked experimental data
     mask_exp_array=np.array(mask_exp)
+    # generate mask over simulated density, using threshold equal to 3*std
     mask_sim = mask_sim_gen(sim_em_data,N_models)
     mask_comb = combine_masks(mask_exp_array,mask_sim)
     # Number of non-zero voxels
@@ -142,8 +149,8 @@ elif (mask == "sim"):
 
 w0,w_init,g0,g_init,sf_init = bioen_init_uniform(N_models)
 
-# std deviation
-std = np.ones(N_voxels)*em_threshold
+# std deviation, which is modelled from the noise distribution
+std = np.ones(N_voxels)*noise_thr_norm/3
 
 # Getting initial optimal scalling factor
 sf_start = leastsq(coeff_fit, sf_init, args=(w0,std,sim_em_v_data,exp_em_mask))[0]
@@ -213,11 +220,10 @@ name = "weights_"+str(float(w_1ake))+".svg"
 plot_weights(w_opt_d,theta_new,name)
 
 """
-"" CORRELATION with exp map - we always use the whole dataset to calculate (so either only exp map or both exp and sim)
+"" CORRELATION with exp map
 """
-
-cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new)
-
+#cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new)
+cc,cc_prior,cc_single = map_correlations(sim_em_data,em_map_threshold,w_opt_d,w0,theta_new)
 
 # TOP 1 structure
 best = np.argsort(w_opt_d[theta_new])[::-1][0]
