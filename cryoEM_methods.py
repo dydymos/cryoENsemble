@@ -140,13 +140,12 @@ def pdb2map_avg(weights,sigma,PDBs,map_param,cryoem_param):
 
 def add_noise(map, noise):
     """
-    Adding noise with mean = 0 and std equal to X% of the maximum value of the map, and also returning the threshold equal to 3x the noise std
+    Adding noise with mean = 0 and std equal to X% of the maximum value of the map
     """
     max = np.max(map)
-    threshold = 3*noise*max
     noise_v = np.random.normal(0,noise*max,map.size)
     noise_m = np.reshape(noise_v,np.shape(map))
-    return map + noise_m, threshold
+    return map + noise_m
 
 
 def write_map(map,map_name,map_param):
@@ -174,7 +173,7 @@ def mask_sim_gen(sim_em_data,N_models):
     mask_x = []
     mask_y = []
     mask_z = []
-    threshold = np.max(sim_em_data)*0.1
+    threshold = np.std(sim_em_data)*3
     for i in range(0,N_models):
         mask_x+=np.where(sim_em_data[i]>threshold)[0].tolist()
         mask_y+=np.where(sim_em_data[i]>threshold)[1].tolist()
@@ -197,16 +196,16 @@ def combine_masks(mask_exp,mask_sim):
     mask_final_uniq=(np.unique(mask_final,axis=1)[0],np.unique(mask_final,axis=1)[1],np.unique(mask_final,axis=1)[2])
     return mask_final_uniq
 
-def map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new):
-    sim_em_rew = np.dot(sim_em_v_data.T,w_opt_d[theta_new])
-    sim_em_prior = np.dot(sim_em_v_data.T,w0)
+def map_correlations(sim_em_data,em_map_threshold,w_opt_d,w0,theta_new):
+    sim_em_rew = np.dot(sim_em_data.T,w_opt_d[theta_new]).T.flatten()
+    sim_em_prior = np.dot(sim_em_data.T,w0).T.flatten()
     # Posterior ensemble avg cc
-    cc = np.dot(sim_em_rew,exp_em_mask)/(np.linalg.norm(sim_em_rew)*np.linalg.norm(exp_em_mask))
+    cc = np.dot(sim_em_rew,em_map_threshold.flatten())/(np.linalg.norm(sim_em_rew)*np.linalg.norm(em_map_threshold.flatten()))
     # Prior ensemble avg cc
-    cc_prior = np.dot(sim_em_prior,exp_em_mask)/(np.linalg.norm(sim_em_prior)*np.linalg.norm(exp_em_mask))
+    cc_prior = np.dot(sim_em_prior,em_map_threshold.flatten())/(np.linalg.norm(sim_em_prior)*np.linalg.norm(em_map_threshold.flatten()))
     # Single best strucute CC
     cc_single = []
     for i in sim_em_v_data:
-        cc_single.append(np.dot(i,exp_em_mask)/(np.linalg.norm(i)*np.linalg.norm(exp_em_mask)))
+        cc_single.append(np.dot(i.flatten(),em_map_threshold.flatten())/(np.linalg.norm(i.flatten())*np.linalg.norm(em_map_threshold.flatten())))
     cc_single_best = np.max(cc_single)
     return cc,cc_prior, cc_single_best
