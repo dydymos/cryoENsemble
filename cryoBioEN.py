@@ -9,7 +9,7 @@ from plot import *
 
 """
 
-USE: cryoBioEN.py ADK.mrc w1 resolution noise mask
+USE: cryoBioEN.py ADK.mrc w1 map_resolution noise mask res
 
 w1 - weights for 1AKE
 w2 - weights for 4AKE = 1 - w1
@@ -32,22 +32,36 @@ em_weights=np.array([w_1ake,w_4ake])
 # map resolution
 sigma = float(sys.argv[3])*0.225
 
+# simulated map resolution
+sigma_sim = float(sys.argv[6])*0.225
+
 # average map
 em_map = pdb2map_avg(em_weights,sigma,["1ake.pdb","4ake_aln.pdb"],map_param,cryoem_param)
 
-# map with noise plus map threshold which equals 3 x noise_std
+# map with noise, which is normal distribution centered on 0 and with std equal to X% of the maximum density in the em_map
 noise = float(sys.argv[4])
-em_map_noise,em_threshold = add_noise(em_map,noise)
+em_map_noise = add_noise(em_map,noise)
+
+# noise based threshold - 3xstd of the noise level
+noise_thr = np.max(em_map)*noise*3
+
+# normalization
+em_map_norm = em_map_noise/np.max(em_map_noise)
+noise_thr_norm = noise_thr/np.max(em_map_noise)
+
+# removing negative values of map (if em_map_norm < 0 -> 0)
+em_map_threshold = np.clip(em_map_norm,0,np.max(em_map_norm))
 
 # Mask of the EM map (where the density is > threshold)
-# Plus EM density with zerroed < threshold density
-tmp_data = em_map_noise - em_threshold
-em_map_threshold = tmp_data.clip(min=0)
-mask_exp = np.where(em_map_threshold > 0)
+mask_exp = np.where(em_map_threshold > noise_thr_norm)
 
-# Saving map with noise
-os.system("rm map_noise_"+str(w_1ake)+".mrc")
-write_map(em_map_noise,"map_noise_"+str(w_1ake)+".mrc",map_param)
+# Saving normalized map with noise
+# os.system("rm map_norm_"+str(w_1ake)+".mrc")
+# write_map(em_map_norm,"map_norm_"+str(w_1ake)+".mrc",map_param)
+
+# Saving normalized map with noise and without negative density
+os.system("rm map_thr_"+str(w_1ake)+".mrc")
+write_map(em_map_threshold,"map_thr_"+str(w_1ake)+".mrc",map_param)
 
 """
 "" Fitting structures into density using Situs
