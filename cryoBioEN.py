@@ -65,8 +65,8 @@ em_map_threshold = np.clip(em_map_norm,0,np.max(em_map_norm))
 mask_exp = np.where(em_map_threshold > noise_thr_norm)
 
 # Saving normalized map with noise and without negative density
-os.system("rm map_thr_"+str(ID)+".mrc")
-write_map(em_map_threshold,"map_thr_"+str(ID)+".mrc",map_param)
+os.system("rm map_thr_"+str(rand_ID)+".mrc")
+write_map(em_map_threshold,"map_thr_"+str(rand_ID)+".mrc",map_param)
 
 """
 "" STRUCTURAL ENSEMBLE
@@ -130,7 +130,7 @@ elif (mask == "sim"):
 w0,w_init,g0,g_init,sf_init = bioen_init_uniform(N_models)
 
 # std deviation
-std = np.ones(N_voxels)*em_threshold
+std = np.ones(N_voxels)*noise_thr_norm/3
 
 # Getting initial optimal scalling factor
 sf_start = leastsq(coeff_fit, sf_init, args=(w0,std,sim_em_v_data,exp_em_mask))[0]
@@ -192,19 +192,20 @@ for i in range(0,10):
 "" PLOTS
 """
 # L-CURVE
-plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels,ID)
+plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels,rand_ID)
 
 # Neff
-plot_Neff(s_dict,chisqrt_d,theta_new,N_voxels,ID)
+plot_Neff(s_dict,chisqrt_d,theta_new,N_voxels,rand_ID)
 
 # WEIGHTS
-plot_weights(w_opt_d,theta_new,ID)
+plot_weights(w_opt_d,theta_new,rand_ID)
 
 """
 "" CORRELATION with exp map
 """
 
-cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new)
+#cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new)
+cc,cc_prior,cc_single = map_correlations(sim_em_data,em_map_threshold,w_opt_d,w0,theta_new)
 
 # TOP 10
 best = np.argsort(w_opt_d[theta_new])[::-1][:10]+1
@@ -212,7 +213,7 @@ best_single = np.argsort(w_opt_d[theta_new])[::-1][0]
 
 best_ratio = 0
 for i in best:
-    if i in random_list[ID-1]: best_ratio+=1
+    if i in random_list[rand_ID-1]: best_ratio+=1
 
 best_ratio/=10.0
 
@@ -220,13 +221,13 @@ best_ratio/=10.0
 "" WRITING POSTERIOR AND PRIOR MAP
 """
 # Saving posterior map
-os.system("rm map_posterior_"+str(ID)+".mrc")
+os.system("rm map_posterior_"+str(rand_ID)+".mrc")
 sim_em_rew = np.dot(sim_em_data.T,w_opt_d[theta_new]).T
-write_map(sim_em_rew,"map_posterior_"+str(ID)+".mrc",map_param)
+write_map(sim_em_rew,"map_posterior_"+str(rand_ID)+".mrc",map_param)
 
-os.system("rm map_prior_"+str(ID)+".mrc")
+os.system("rm map_prior_"+str(rand_ID)+".mrc")
 sim_em_rew = np.dot(sim_em_data.T,w0).T
-write_map(sim_em_rew,"map_prior_"+str(ID)+".mrc",map_param)
+write_map(sim_em_rew,"map_prior_"+str(rand_ID)+".mrc",map_param)
 
 file = open("statistics.dat", "a")
 
@@ -240,3 +241,4 @@ file.write("Single Best structure: " + str(PDBs[best_single])+"\n")
 np.savetxt(file,best,newline=" ",fmt="%i")
 file.write("\n")
 file.write("How many true models are in top10: "+str(best_ratio*100)+"%\n" )
+file.close()
