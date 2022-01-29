@@ -9,7 +9,8 @@ from plot import *
 
 """
 
-"" USE: cryoBioEN.py ref_map.mrc resolution noise masktype ID
+"" USE: cryoBioEN.py ref_map.mrc resolution noise masktype rand_ID res
+
 "" masktype:
 "" - exp -> using only voxels from experimental EM map
 "" - sim -> using both voxels from experimental EM map and generated from ensemble
@@ -28,9 +29,12 @@ cryoem_param = cryoEM_parameters(map_param)
 # map resolution
 sigma = float(sys.argv[2])*0.225
 
+# simulated map resolution
+sigma_sim = float(sys.argv[6])*0.225
+
 # average map map generate from randomly chosen 10 maps
 # ID
-ID = int(sys.argv[5])
+rand_ID = int(sys.argv[5])
 
 # Number of models
 M = 10
@@ -38,24 +42,31 @@ path = "/home/didymos/Linux_05.2021/Projects/BioEN/NC/minim"
 
 random_list = np.loadtxt("random_list.dat")
 
-random_pdbs = [path+"/minim_"+str(int(x))+".pdb" for x in random_list[ID-1]]
+random_pdbs = [path+"/minim_"+str(int(x))+".pdb" for x in random_list[rand_ID-1]]
 
 em_weights=np.zeros(M)+0.1
 em_map = pdb2map_avg(em_weights,sigma,random_pdbs,map_param,cryoem_param)
 
 # map with noise plus map threshold which equals 3 x noise_std
 noise = float(sys.argv[3])
-em_map_noise,em_threshold = add_noise(em_map,noise)
+em_map_noise = add_noise(em_map,noise)
+
+# noise based threshold - 3xstd of the noise level
+noise_thr = np.max(em_map)*noise*3
+
+# normalization
+em_map_norm = em_map_noise/np.max(em_map_noise)
+noise_thr_norm = noise_thr/np.max(em_map_noise)
+
+# removing negative values of map (if em_map_norm < 0 -> 0)
+em_map_threshold = np.clip(em_map_norm,0,np.max(em_map_norm))
 
 # Mask of the EM map (where the density is > threshold)
-# Plus EM density with zerroed < threshold density
-tmp_data = em_map_noise - em_threshold
-em_map_threshold = tmp_data.clip(min=0)
-mask_exp = np.where(em_map_threshold > 0)
+mask_exp = np.where(em_map_threshold > noise_thr_norm)
 
-# Saving map with noise
-os.system("rm map_noise_"+str(ID)+".mrc")
-write_map(em_map_noise,"map_noise_"+str(ID)+".mrc",map_param)
+# Saving normalized map with noise and without negative density
+os.system("rm map_thr_"+str(ID)+".mrc")
+write_map(em_map_threshold,"map_thr_"+str(ID)+".mrc",map_param)
 
 """
 "" STRUCTURAL ENSEMBLE
@@ -72,7 +83,7 @@ for i in range(1,101):
    PDBs.append(path+"/minim_"+str(i)+'.pdb')
 
 # Generating array of EM maps based on structures
-sim_em_data = np.array(pdb2map_array(PDBs,sigma,map_param,cryoem_param))
+sim_em_data = np.array(pdb2map_array(PDBs,sigma_sim,map_param,cryoem_param))
 
 
 """

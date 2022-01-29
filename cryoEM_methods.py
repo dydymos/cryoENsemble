@@ -186,13 +186,13 @@ def pdb2map_avg(weights,sigma,PDBs,map_param,cryoem_param):
 
 def add_noise(map, noise):
     """
-    Adding noise with mean = 0 and std equal to X% of the maximum value of the map, and also returning the threshold equal to 3x the noise std
+    Adding noise with mean = 0 and std equal to X% of the maximum value of the map
     """
     max = np.max(map)
     threshold = 3*noise*max
     noise_v = np.random.normal(0,noise*max,map.size)
     noise_m = np.reshape(noise_v,np.shape(map))
-    return map + noise_m, threshold
+    return map + noise_m
 
 
 def write_map(map,map_name,map_param):
