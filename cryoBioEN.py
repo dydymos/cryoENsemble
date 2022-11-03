@@ -22,12 +22,12 @@ map_param = reference_map(sys.argv[1])
 cryoem_param = cryoEM_parameters(map_param)
 
 """
-"" Creating average EM map
+"" Creating average EM map of open and close state based on weights
 """
 # Weights for 1AKE and 4AKE:
 w_1ake = float(sys.argv[2])
 w_4ake = 1 - w_1ake
-em_weights=np.array([w_1ake,w_4ake])
+em_weights = np.array([w_1ake,w_4ake])
 
 # map resolution
 sigma = float(sys.argv[3])*0.225
@@ -64,7 +64,7 @@ os.system("rm map_thr_"+str(w_1ake)+".mrc")
 write_map(em_map_threshold,"map_thr_"+str(w_1ake)+".mrc",map_param)
 
 """
-"" Fitting structures into density using Situs
+"" Fitting structures into density using Chimerax
 """
 # Fitting 1ake structures
 for i in range(1,51):
@@ -106,6 +106,11 @@ sim_em_data = np.array(pdb2map_array(PDBs,sigma_sim,map_param,cryoem_param))
 """
 "" MASKING
 """
+
+# Masking can take place in two ways:
+# EXP - when we use mask generated from experimental map
+# SIM - when we also include voxels from the map generated for each fitted structure
+# for that we use threshold eaulat to 3x the simulated map std
 
 mask = sys.argv[5]
 if (mask == "exp"):
