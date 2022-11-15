@@ -9,8 +9,12 @@ from os.path import exists
 import argparse
 
 
+"""
+"" PATHWAYS
+"""
 
-
+situs_path = "/work/e280/e280-Christodoul/tomek/soft/Situs_3.1/bin/"
+structures_path = "structures/"
 
 """
 "" Input
@@ -124,12 +128,12 @@ else: write_map(em_map_norm,"map_norm_"+str(w_1ake)+".mrc",map_param)
 """
 # Fitting 1ake structures
 for i in range(1,51):
-    os.system('~/soft/Situs_3.1/bin/colores map_norm_'+str(w_1ake)+'.mrc /home/didymos/Linux_05.2021/Projects/BioEN/ADK/1ake/structures/'+str(i)+'_fit.pdb -res '+str(args.resM)+' -nprocs 6')
+    os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc /home/didymos/Linux_05.2021/Projects/BioEN/ADK/1ake/structures/'+str(i)+'_fit.pdb -res '+str(args.resM)+' -nprocs 6')
     os.system('mv col_best_001.pdb structures/1ake/'+str(i)+'_rb_fit.pdb')
     os.system('rm col_*')
 
 
 for i in range(1,51):
-    os.system('~/soft/Situs_3.1/bin/colores map_norm_'+str(w_1ake)+'.mrc /home/didymos/Linux_05.2021/Projects/BioEN/ADK/4ake/structures/'+str(i)+'_fit.pdb -res '+str(args.resM)+' -nprocs 6')
+    os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc /home/didymos/Linux_05.2021/Projects/BioEN/ADK/4ake/structures/'+str(i)+'_fit.pdb -res '+str(args.resM)+' -nprocs 6')
     os.system('mv col_best_001.pdb structures/4ake/'+str(i)+'_rb_fit.pdb')
     os.system('rm col_*')
