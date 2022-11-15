@@ -27,7 +27,7 @@ def checker(a):
     return num
 
 def checker_mask(mask_type):
-    if maks_type != 'exp' and mask_type != 'sim':
+    if mask_type != 'exp' and mask_type != 'sim':
         raise argparse.ArgumentTypeError('Invalid value. Mask can only be based on experimental (exp) or both experimental and simulations data (sim+exp)')
     return num
 
@@ -37,7 +37,7 @@ parser.add_argument('weight', type = float, help = 'Weight for the 1AKE structur
 parser.add_argument('resM', type = checker, help = 'Reference map resolution')
 parser.add_argument('resG', type = float, help = 'Generated map resolution')
 parser.add_argument('noise', type = float, help = 'Noise level, which is defined as normal distribution centered around 0 and with std equal to X of the maximum density in the Reference map')
-parser.add_argument('mask', type = checker_mask, help = 'Type of mask: exp or sim')
+parser.add_argument('mask type', type = checker_mask, help = 'Type of mask: exp or sim')
 
 
 args = parser.parse_args()
