@@ -6,18 +6,36 @@ from bioEN_functions import *
 from cryoEM_methods import *
 from reference_map_ADK import *
 from plot import *
+import argparse
+
 
 """
+"" Input
+"""
 
-USE: cryoBioEN.py ADK.mrc w1 map_resolution noise mask res
-
-w1 - weights for 1AKE
-w2 - weights for 4AKE = 1 - w1
+parser = argparse.ArgumentParser(description='Running cryBioEN for ADK example')
+parser.add_argument('exp_map', help = 'Experimental map filename')
+parser.add_argument('weight', type = float, help = 'Weight for the 1AKE')
+parser.add_argument('resE', type = float, help = 'Experimental map resolution')
+parser.add_argument('noise', help = 'Noise level')
+parser.add_argument('mask', help = 'Type of mask')
+parser.add_argument('resG',help = 'Generated map resolution')
+args = parser.parse_args()
 
 """
+"" MAP details
+"""
+
+nx = 45
+ny = 45
+nz = 45
+origin = np.array([])
+
+voxel =
+
 
 # Getting cryoEM map properties
-map_param = reference_map(sys.argv[1])
+map_param = reference_map(args.exp_map)
 # CryoEM paramters for map generators
 cryoem_param = cryoEM_parameters(map_param)
 
@@ -25,15 +43,15 @@ cryoem_param = cryoEM_parameters(map_param)
 "" Creating average EM map of open and close state based on weights
 """
 # Weights for 1AKE and 4AKE:
-w_1ake = float(sys.argv[2])
+w_1ake = args.weight
 w_4ake = 1 - w_1ake
 em_weights = np.array([w_1ake,w_4ake])
 
 # map resolution
-sigma = float(sys.argv[3])*0.225
+sigma = float(args.resE)*0.225
 
 # simulated map resolution
-sigma_sim = float(sys.argv[6])*0.225
+sigma_sim = float(args.resG)*0.225
 
 # average map
 em_map = pdb2map_avg(em_weights,sigma,["1ake.pdb","4ake_aln.pdb"],map_param,cryoem_param)
