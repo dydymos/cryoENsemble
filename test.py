@@ -29,7 +29,7 @@ def checker(a):
 def checker_mask(mask_type):
     if mask_type != 'exp' and mask_type != 'sim':
         raise argparse.ArgumentTypeError('Invalid value. Mask can only be based on experimental (exp) or both experimental and simulations data (sim+exp)')
-    return num
+    return mask_type
 
 
 parser = argparse.ArgumentParser(description='Running cryBioEN for ADK example')
