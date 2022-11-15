@@ -26,13 +26,19 @@ def checker(a):
         raise argparse.ArgumentTypeError('Invalid value. Only resolution equal to 6 or 10 are acceptable')
     return num
 
+def checker_mask(a):
+    num = float(a)
+    if num != 'exp' and num != 'sim':
+        raise argparse.ArgumentTypeError('Invalid value. Mask can only be based on experimental (exp) or both experimental and simulations data (sim+exp)')
+    return num
+
 
 parser = argparse.ArgumentParser(description='Running cryBioEN for ADK example')
 parser.add_argument('weight', type = float, help = 'Weight for the 1AKE structure in the reference map')
 parser.add_argument('resM', type = checker, help = 'Reference map resolution')
 parser.add_argument('resG', type = float, help = 'Generated map resolution')
 parser.add_argument('noise', type = float, help = 'Noise level, which is defined as normal distribution centered around 0 and with std equal to X of the maximum density in the Reference map')
-#parser.add_argument('mask', help = 'Type of mask')
+parser.add_argument('mask', type = checker_mask, help = 'Type of mask: exp or sim')
 
 
 args = parser.parse_args()
@@ -127,13 +133,78 @@ else: write_map(em_map_norm,"map_norm_"+str(w_1ake)+".mrc",map_param)
 "" Fitting structures into density using Situs
 """
 # Fitting 1ake structures
-for i in range(1,51):
-    os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc '+structures_path+'1ake/'+str(i)+'.pdb -res '+str(args.resM)+' -nprocs 6')
-    os.system('mv col_best_001.pdb '+structures_path+'1ake/'+str(i)+'_fit.pdb')
-    os.system('rm col_*')
+#for i in range(1,51):
+#    os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc '+structures_path+'1ake/'+str(i)+'.pdb -res '+str(args.resM)+' -nprocs 6')
+#    os.system('mv col_best_001.pdb '+structures_path+'1ake/'+str(i)+'_fit.pdb')
+#    os.system('rm col_*')
 
 
-for i in range(1,51):
-    os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc '+structures_path+'4ake/'+str(i)+'.pdb -res '+str(args.resM)+' -nprocs 6')
-    os.system('mv col_best_001.pdb '+structures_path+'4ake/'+str(i)+'_fit.pdb')
-    os.system('rm col_*')
+#for i in range(1,51):
+#    os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc '+structures_path+'4ake/'+str(i)+'.pdb -res '+str(args.resM)+' -nprocs 6')
+#    os.system('mv col_best_001.pdb '+structures_path+'4ake/'+str(i)+'_fit.pdb')
+#    os.system('rm col_*')
+
+
+"""
+"" STRUCTURAL ENSEMBLE
+"""
+
+# OK Now we read models from 1ake and 4ake
+# We use 50 model from 1ake and 50 models from 4ake
+
+# Number of structures/models
+N_models = 100
+
+PDBs_1ake = glob.glob(structures_path+'1ake/*_fit.pdb')[:50]
+PDBs_4ake = glob.glob(structures_path+'4ake/*_fit.pdb')[:50]
+
+# PDB files
+PDBs=PDBs_1ake+PDBs_4ake
+
+# Generating array of EM maps based on structures
+sim_em_data = np.array(pdb2map_array(PDBs,sigma_sim,map_param,cryoem_param))
+
+sim_map = np.sum(sim_em_data,0)
+
+# Saving normalized map with noise and without negative density
+if exists("map_sim_"+str(w_1ake)+".mrc"):
+    os.system("rm map_sim_"+str(w_1ake)+".mrc")
+    write_map(sim_map,"map_sim_"+str(w_1ake)+".mrc",map_param)
+else: write_map(sim_map,"map_norm_"+str(w_1ake)+".mrc",map_param)
+
+
+"""
+"" MASKING
+"""
+
+# Masking can take place in two ways:
+# EXP - when we use mask generated from experimental map
+# SIM - when we also include voxels from the map generated for each fitted structure
+# for that we use threshold eaulat to 3x the simulated map std
+
+mask = args.mask
+if (mask == "exp"):
+    # Masked experimental data
+    exp_em_mask = em_map_norm[mask_exp]
+    # Number of non-zero voxels
+    N_voxels=np.shape(mask_exp)[1]
+    # New simulated map with only voxels corresponding to the experimental signal
+    sim_em_v_data=np.zeros([N_models,N_voxels])
+    for i in range(0,N_models):
+        sim_em_v_data[i]=sim_em_data[i][mask_exp]
+
+
+elif (mask == "sim"):
+    # Masked experimental data
+    mask_exp_array=np.array(mask_exp)
+    # generate mask over simulated density, using threshold equal to 3*std
+    mask_sim = mask_sim_gen(sim_em_data,N_models)
+    mask_comb = combine_masks(mask_exp_array,mask_sim)
+    # Number of non-zero voxels
+    N_voxels=np.shape(mask_comb)[1]
+    # Masked experimental data
+    exp_em_mask = em_map_norm[mask_comb]
+    # New simulated map with only voxels corresponding to the exp+sim
+    sim_em_v_data=np.zeros([N_models,N_voxels])
+    for i in range(0,N_models):
+        sim_em_v_data[i]=sim_em_data[i][mask_comb]
