@@ -37,7 +37,7 @@ parser.add_argument('weight', type = float, help = 'Weight for the 1AKE structur
 parser.add_argument('resM', type = checker, help = 'Reference map resolution')
 parser.add_argument('resG', type = float, help = 'Generated map resolution')
 parser.add_argument('noise', type = float, help = 'Noise level, which is defined as normal distribution centered around 0 and with std equal to X of the maximum density in the Reference map')
-parser.add_argument('mask type', type = checker_mask, help = 'Type of mask: exp or sim')
+parser.add_argument('mask_type', type = checker_mask, help = 'Type of mask: exp or sim')
 
 
 args = parser.parse_args()
@@ -181,7 +181,7 @@ else: write_map(sim_map,"map_sim_"+str(w_1ake)+".mrc",map_param)
 # SIM - when we also include voxels from the map generated for each fitted structure
 # for that we use threshold eaulat to 3x the simulated map std
 
-mask = args.mask
+mask = args.mask_type
 if (mask == "exp"):
     # Masked experimental data
     exp_em_mask = em_map_norm[mask_exp]
