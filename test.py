@@ -164,6 +164,7 @@ PDBs_4ake = glob.glob(structures_path+'4ake/*_fit.pdb')[:50]
 PDBs=PDBs_1ake+PDBs_4ake
 
 # Generating array of EM maps based on structures
+print("Generating array of EM maps based on structures from MD simulation")
 sim_em_data = np.array(pdb2map_array(PDBs,sigma_sim,map_param,cryoem_param))
 
 sim_map = np.sum(sim_em_data,0)
@@ -245,6 +246,7 @@ maxiter = 5000
 n_iter = 10
 
 # Theta
+print("Running BioEN through preselected values of theta")
 thetas = [1000000,100000,10000,1000,100,10,1,0]
 
 # Running BioEN iterations through hyperparameter Theta:
@@ -267,6 +269,7 @@ theta_index = knee_loc(list(s_dict.values()),list(chisqrt_d.values()))
 theta_knee = thetas[theta_index]
 theta_index_sort = theta_index
 
+print("Running BioEN iterations to narrow down the theta value")
 for i in range(0,10):
     thetas_old = np.sort(list(w_opt_d.keys()))[::-1]
     theta_up = (thetas_old[theta_index_sort - 1] + thetas_old[theta_index_sort])/2.
@@ -282,3 +285,50 @@ for i in range(0,10):
     theta_new = list(w_opt_d.keys())[theta_index_new]
     thetas_sorted = np.sort(list(w_opt_d.keys()))[::-1]
     theta_index_sort = np.where(theta_new == thetas_sorted)[0][0]
+
+
+"""
+"" PLOTS
+"""
+# L-CURVE
+name = "lcurve_"+str(float(w_1ake))+".svg"
+plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels,name)
+
+# WEIGHTS
+name = "weights_"+str(float(w_1ake))+".svg"
+plot_weights(w_opt_d,theta_new,name)
+
+"""
+"" CORRELATION with exp map
+"""
+#cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new)
+cc,cc_prior,cc_single = map_correlations(sim_em_data,em_map_norm,w_opt_d,w0,theta_new)
+
+# TOP 1 structure
+best = np.argsort(w_opt_d[theta_new])[::-1][0]
+
+"""
+"" WRITING POSTERIOR AND PRIOR MAP
+"""
+# Saving posterior map
+os.system("rm map_posterior_"+str(w_1ake)+".mrc")
+sim_em_rew = np.dot(sim_em_data.T,w_opt_d[theta_new]).T
+write_map(sim_em_rew,"map_posterior_"+str(w_1ake)+".mrc",map_param)
+
+os.system("rm map_prior_"+str(w_1ake)+".mrc")
+sim_em_rew = np.dot(sim_em_data.T,w0).T
+write_map(sim_em_rew,"map_prior_"+str(w_1ake)+".mrc",map_param)
+
+"""
+"" WRITING STATISTICS
+"""
+plik = open("statistics.dat","a")
+plik.write("POPULATION of 1AKE in the map: "+str(w_1ake)+"\n")
+plik.write("Theta value chosen by Kneedle algorithm: "+str(theta_new)+"\n")
+plik.write("Population of 1ake: "+str(np.round(np.sum(w_opt_d[theta_new][:50]),2))+"\n")
+plik.write("Population of 4ake: "+str(np.round(np.sum(w_opt_d[theta_new][50:]),2))+"\n")
+plik.write("Posteriori Correlation: "+str(cc)+"\n")
+plik.write("Priori Correlation: "+str(cc_prior)+"\n")
+plik.write("Single Best structure Correlation: "+str(cc_single)+"\n")
+plik.write("Single Best structure: "+str(PDBs[best])+"\n")
+plik.write("\n")
