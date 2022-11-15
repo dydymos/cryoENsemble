@@ -169,7 +169,7 @@ sim_map = np.sum(sim_em_data,0)
 if exists("map_sim_"+str(w_1ake)+".mrc"):
     os.system("rm map_sim_"+str(w_1ake)+".mrc")
     write_map(sim_map,"map_sim_"+str(w_1ake)+".mrc",map_param)
-else: write_map(sim_map,"map_norm_"+str(w_1ake)+".mrc",map_param)
+else: write_map(sim_map,"map_sim_"+str(w_1ake)+".mrc",map_param)
 
 
 """
