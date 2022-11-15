@@ -134,6 +134,6 @@ for i in range(1,51):
 
 
 for i in range(1,51):
-    os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc '+structures_path+'4ake/'str(i)+'.pdb -res '+str(args.resM)+' -nprocs 6')
+    os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc '+structures_path+'4ake/'+str(i)+'.pdb -res '+str(args.resM)+' -nprocs 6')
     os.system('mv col_best_001.pdb '+structures_path+'4ake/'+str(i)+'_fit.pdb')
     os.system('rm col_*')
