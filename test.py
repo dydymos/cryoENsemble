@@ -26,9 +26,8 @@ def checker(a):
         raise argparse.ArgumentTypeError('Invalid value. Only resolution equal to 6 or 10 are acceptable')
     return num
 
-def checker_mask(a):
-    num = float(a)
-    if num != 'exp' and num != 'sim':
+def checker_mask(mask_type):
+    if maks_type != 'exp' and mask_type != 'sim':
         raise argparse.ArgumentTypeError('Invalid value. Mask can only be based on experimental (exp) or both experimental and simulations data (sim+exp)')
     return num
 
