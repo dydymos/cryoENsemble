@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.optimize as sopt
 from scipy.optimize import leastsq
+import kneed
 from kneed import KneeLocator
 
 

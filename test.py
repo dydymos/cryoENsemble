@@ -135,16 +135,16 @@ else: write_map(em_map_norm,"map_norm_"+str(w_1ake)+".mrc",map_param)
 "" Fitting structures into density using Situs
 """
 # Fitting 1ake structures
-#for i in range(1,51):
-#    os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc '+structures_path+'1ake/'+str(i)+'.pdb -res '+str(args.resM)+' -nprocs 6')
-#    os.system('mv col_best_001.pdb '+structures_path+'1ake/'+str(i)+'_fit.pdb')
-#    os.system('rm col_*')
+for i in range(1,51):
+    os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc '+structures_path+'1ake/'+str(i)+'.pdb -res '+str(args.resM)+' -nprocs 6')
+    os.system('mv col_best_001.pdb '+structures_path+'1ake/'+str(i)+'_fit.pdb')
+    os.system('rm col_*')
 
 
-#for i in range(1,51):
-#    os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc '+structures_path+'4ake/'+str(i)+'.pdb -res '+str(args.resM)+' -nprocs 6')
-#    os.system('mv col_best_001.pdb '+structures_path+'4ake/'+str(i)+'_fit.pdb')
-#    os.system('rm col_*')
+for i in range(1,51):
+    os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc '+structures_path+'4ake/'+str(i)+'.pdb -res '+str(args.resM)+' -nprocs 6')
+    os.system('mv col_best_001.pdb '+structures_path+'4ake/'+str(i)+'_fit.pdb')
+    os.system('rm col_*')
 
 
 """
@@ -203,7 +203,7 @@ mask_exp_array=np.array(mask_exp)
 mask_sim = mask_sim_gen(sim_em_data,N_models)
 mask_comb = combine_masks(mask_exp_array,mask_sim)
 
-elif (mask == "sim"):
+if (mask == "sim"):
     # Number of non-zero voxels
     N_voxels=np.shape(mask_comb)[1]
     # Masked experimental data
