@@ -167,10 +167,7 @@ PDBs=PDBs_1ake+PDBs_4ake
 print("Generating an array of EM maps based on the structures from MD simulation")
 sim_em_data = np.array(pdb2map_array(PDBs,sigma_sim,map_param,cryoem_param))
 
-# normalization
-sim_em_norm = (sim_em_data - np.mean(sim_em_data,0))/np.std(sim_em_data,0)
-
-sim_map = np.sum(sim_em_norm,0)
+sim_map = np.sum(sim_em_data,0)
 
 # Saving normalized map with noise and without negative density
 if exists("map_sim_"+str(w_1ake)+".mrc"):
@@ -197,15 +194,16 @@ if (mask == "exp"):
     # New simulated map with only voxels corresponding to the experimental signal
     sim_em_v_data=np.zeros([N_models,N_voxels])
     for i in range(0,N_models):
-        sim_em_v_data[i]=sim_em_norm[i][mask_exp]
+        sim_em_v_data[i]=sim_em_data[i][mask_exp]
 
+# Mask for CCC calculations
+# Masked experimental data
+mask_exp_array=np.array(mask_exp)
+# generate mask over simulated density, using threshold equal to 3*std
+mask_sim = mask_sim_gen(sim_em_data,N_models)
+mask_comb = combine_masks(mask_exp_array,mask_sim)
 
 elif (mask == "sim"):
-    # Masked experimental data
-    mask_exp_array=np.array(mask_exp)
-    # generate mask over simulated density, using threshold equal to 3*std
-    mask_sim = mask_sim_gen(sim_em_norm,N_models)
-    mask_comb = combine_masks(mask_exp_array,mask_sim)
     # Number of non-zero voxels
     N_voxels=np.shape(mask_comb)[1]
     # Masked experimental data
@@ -213,7 +211,9 @@ elif (mask == "sim"):
     # New simulated map with only voxels corresponding to the exp+sim
     sim_em_v_data=np.zeros([N_models,N_voxels])
     for i in range(0,N_models):
-        sim_em_v_data[i]=sim_em_norm[i][mask_comb]
+        sim_em_v_data[i]=sim_em_data[i][mask_comb]
+
+
 
 """
 "" Optimization via Log-Weights as in Kofinger et. al 2019
@@ -305,7 +305,7 @@ plot_weights(w_opt_d,theta_new,name)
 "" CORRELATION with exp map
 """
 #cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new)
-cc,cc_prior,cc_single = map_correlations(sim_em_norm,em_map_norm,w_opt_d,w0,theta_new)
+cc,cc_prior,cc_single = map_correlations_mask(sim_em_data,em_map_norm,mask_comb,w_opt_d,w0,theta_new)
 
 # TOP 1 structure
 best = np.argsort(w_opt_d[theta_new])[::-1][0]
@@ -314,7 +314,7 @@ best = np.argsort(w_opt_d[theta_new])[::-1][0]
 "" WRITING POSTERIOR AND PRIOR MAP
 """
 # Saving posterior map
-sim_em_rew = np.dot(sim_em_norm.T,w_opt_d[theta_new]).T
+sim_em_rew = np.dot(sim_em_data.T,w_opt_d[theta_new]).T
 if exists("map_posterior_"+str(w_1ake)+".mrc"):
     os.system("rm map_posterior_"+str(w_1ake)+".mrc")
     write_map(sim_em_rew,"map_posterior_"+str(w_1ake)+".mrc",map_param)
@@ -322,7 +322,7 @@ else: write_map(sim_em_rew,"map_posterior_"+str(w_1ake)+".mrc",map_param)
 
 
 # Saving prior map
-sim_em_rew = np.dot(sim_em_norm.T,w0).T
+sim_em_rew = np.dot(sim_em_data.T,w0).T
 if exists("map_prior_"+str(w_1ake)+".mrc"):
     os.system("rm map_prior_"+str(w_1ake)+".mrc")
     write_map(sim_em_rew,"map_prior_"+str(w_1ake)+".mrc",map_param)
