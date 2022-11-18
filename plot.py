@@ -24,14 +24,17 @@ def plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels,name):
 
 
 
-def plot_weights(w_opt_d,theta_new,name):
+def plot_weights(w_opt_d,sel,theta_new,N,name):
     cmap = plt.cm.get_cmap('rainbow')
+    x = np.zeros(N)
     plt.figure(figsize=[6,6])
     N = len(w_opt_d)
     for i in range(0,N):
         key = np.sort(list(w_opt_d.keys()))[::-1][i]
-        plt.plot(w_opt_d[key],'o-',color=cmap((i+1)/N),label=str(key))
-    plt.plot(w_opt_d[theta_new],'o-',color="black")
+        x[sel] = w_opt_d[key]
+        plt.plot(x,'o-',color=cmap((i+1)/N),label=str(key))
+    x[sel] = w_opt_d[theta_new]
+    plt.plot(x,'o-',color="black")
     plt.legend(loc=(1.0,0))
     plt.xlabel("Models")
     plt.ylabel("Weights")

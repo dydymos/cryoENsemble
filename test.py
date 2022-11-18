@@ -290,6 +290,8 @@ for i in range(0,10):
     theta_index_sort = np.where(theta_new == thetas_sorted)[0][0]
 
 
+
+
 """
 "" PLOTS
 """
@@ -299,7 +301,7 @@ plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels,name)
 
 # WEIGHTS
 name = "weights_"+str(float(w_1ake))+".svg"
-plot_weights(w_opt_d,theta_new,name)
+plot_weights(w_opt_d,np.arange(0,N_models),theta_new,N_models,name)
 
 """
 "" CORRELATION with exp map
@@ -336,6 +338,7 @@ else: write_map(sim_em_rew,"map_prior_"+str(w_1ake)+".mrc",map_param)
 plik = open("statistics.dat","a")
 plik.write("POPULATION of 1AKE in the map: "+str(w_1ake)+"\n")
 plik.write("Theta value chosen by Kneedle algorithm: "+str(theta_new)+"\n")
+plik.write("Chisqrt value: "+str(chisqrt_d[theta_new])+"\n")
 plik.write("Population of 1ake: "+str(np.round(np.sum(w_opt_d[theta_new][:50]),2))+"\n")
 plik.write("Population of 4ake: "+str(np.round(np.sum(w_opt_d[theta_new][50:]),2))+"\n")
 plik.write("Posteriori Correlation: "+str(cc)+"\n")
@@ -343,3 +346,116 @@ plik.write("Priori Correlation: "+str(cc_prior)+"\n")
 plik.write("Single Best structure Correlation: "+str(cc_single)+"\n")
 plik.write("Single Best structure: "+str(PDBs[best])+"\n")
 plik.write("\n")
+
+
+
+"""
+"" ITERATIVE search of the smallest set of structures
+"" theta_new - selected theta value
+"" w_opt_d[theta_new] - weights corresponding to the selected theta
+"""
+
+# testing for which structure we do see weights to be lower than initial one
+# We will remove these structures and focus on optimizing weights for the remaining ones
+
+np.where(w_opt_d[theta_new]>w_init)
+selected_frames = np.where(w_opt_d[theta_new]>w_init)[0]
+selection = selected_frames
+new_chisqrt = chisqrt_d[theta_new]
+old_chisqrt = chisqrt_d[theta_new]
+
+"""
+"" Parameters for optimization algorithm
+"""
+# For now we can only use BFGS algorithm as is coded in SCIPY
+epsilon = 1e-08
+pgtol = 1e-05
+maxiter = 5000
+# Number of iterations
+n_iter = 10
+# Theta
+thetas = [1000000,100000,10000,1000,100,10,1,0]
+
+"""
+"" WHILE LOOP
+"""
+iteration = 1
+while (new_chisqrt<=old_chisqrt):
+    N_models_sel = len(selected_frames)
+    w0,w_init,g0,g_init,sf_init = bioen_init_uniform(N_models_sel)
+    # Selecting data
+    sim_em_v_data_selected = sim_em_v_data[selected_frames]
+    # Getting initial optimal scalling factor
+    sf_start = leastsq(coeff_fit, sf_init, args=(w0,std,sim_em_v_data_selected,exp_em_mask))[0]
+    # Running BioEN iterations through hyperparameter Theta:
+    # w_opt_array, S_array, chisqrt_array = bioen(sim_em_v_data,exp_em_mask,std,thetas, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+    # Running BioEN in a loop so we can apply knee dectection algorithm later
+    w_opt_d_sel = dict()
+    sf_opt_d_sel = dict()
+    s_dict_sel = dict()
+    chisqrt_d_sel = dict()
+    for th in thetas:
+        w_temp, sf_temp = bioen_single(sim_em_v_data_selected,exp_em_mask,std,th, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+        w_opt_d_sel[th] = w_temp
+        sf_opt_d_sel[th] = sf_temp
+        s_dict_sel[th] = get_entropy(w0,w_temp)
+        chisqrt_d_sel[th] = chiSqrTerm(w_temp,std,sim_em_v_data_selected*sf_temp,exp_em_mask)
+    # Knee locator used to find sensible theta value
+    theta_index = knee_loc(list(s_dict_sel.values()),list(chisqrt_d_sel.values()))
+    theta_knee = thetas[theta_index]
+    theta_index_sort = theta_index
+    for i in range(0,10):
+        thetas_old = np.sort(list(w_opt_d_sel.keys()))[::-1]
+        theta_up = (thetas_old[theta_index_sort - 1] + thetas_old[theta_index_sort])/2.
+        theta_down = (thetas_old[theta_index_sort + 1] + thetas_old[theta_index_sort])/2.
+        for th in theta_up,theta_down:
+            w_temp, sf_temp = bioen_single(sim_em_v_data_selected,exp_em_mask,std,th, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+            w_opt_d_sel[th] = w_temp
+            sf_opt_d_sel[th] = sf_temp
+            s_dict_sel[th] = get_entropy(w0,w_temp)
+            chisqrt_d_sel[th] = chiSqrTerm(w_temp,std,sim_em_v_data_selected*sf_temp,exp_em_mask)
+            # Knee locator
+        theta_index_new_sel = knee_loc(list(s_dict_sel.values()),list(chisqrt_d_sel.values()))
+        theta_new_sel = list(w_opt_d_sel.keys())[theta_index_new_sel]
+        thetas_sorted_sel = np.sort(list(w_opt_d_sel.keys()))[::-1]
+        theta_index_sort_sel = np.where(theta_new_sel == thetas_sorted_sel)[0][0]
+    # L-CURVE
+    name = "lcurve_"+str(float(w_1ake))+"_iter_"+str(iteration)+".svg"
+    plot_lcurve(s_dict_sel,chisqrt_d_sel,theta_new_sel,N_voxels,name)
+    # WEIGHTS
+    name = "weights_"+str(float(w_1ake))+"_iter_"+str(iteration)+".svg"
+    plot_weights(w_opt_d_sel,selection,theta_new_sel,N_models,name)
+    # Cross-correlation
+    cc_sel,cc_prior_sel,cc_single_sel = map_correlations_mask(sim_em_data[selection],em_map_norm,mask_comb,w_opt_d_sel,w0,theta_new_sel)
+    # Saving posterior map
+    sim_em_rew_sel = np.dot(sim_em_data[selection].T,w_opt_d_sel[theta_new_sel]).T
+    if exists("map_posterior_"+str(w_1ake)+"_iter_"+str(iteration)+".mrc"):
+        os.system("rm map_posterior_"+str(w_1ake)+"_iter_"+str(iteration)+".mrc")
+        write_map(sim_em_rew_sel,"map_posterior_"+str(w_1ake)+"_iter_"+str(iteration)+".mrc",map_param)
+    else: write_map(sim_em_rew_sel,"map_posterior_"+str(w_1ake)+"_iter_"+str(iteration)+".mrc",map_param)
+    # writing statistics
+    plik_sel = open("statistics_"+str(w_1ake)+"_iter.dat","a")
+    plik_weights = open("weights_"+str(w_1ake)+"_iter_"+str(iteration)+".dat","w")
+    plik_sel.write("ITERATION "+str(iteration)+"\n")
+    plik_sel.write("POPULATION of 1AKE in the map: "+str(w_1ake)+"\n")
+    plik_sel.write("Theta value chosen by Kneedle algorithm: "+str(theta_new_sel)+"\n")
+    plik_sel.write("Chisqrt value: "+str(chisqrt_d_sel[theta_new_sel])+"\n")
+    w_all = np.zeros(N_models)
+    w_all[selection] = w_opt_d_sel[theta_new_sel]
+    np.savetxt(plik_weights,w_all)
+    plik_weights.close()
+    plik_sel.write("Population of 1ake: "+str(np.round(np.sum(w_all[:50]),2))+"\n")
+    plik_sel.write("Population of 4ake: "+str(np.round(np.sum(w_all[50:]),2))+"\n")
+    plik_sel.write("Posteriori Correlation: "+str(cc_sel)+"\n")
+    plik_sel.write("Priori Correlation: "+str(cc_prior)+"\n")
+    plik_sel.write("\n")
+    selection = np.where(w_opt_d_sel[theta_new_sel]>w_init)[0]
+    temp_sel = selected_frames[selection]
+    selected_frames = temp_sel
+    selection = selected_frames
+    old_chisqrt = new_chisqrt
+    new_chisqrt = chisqrt_d_sel[theta_new_sel]
+    iteration+=1
+
+plik_sel.close()
+plik.close()
