@@ -1,4 +1,3 @@
-import sys
 import os
 import glob
 import numpy as np
@@ -6,36 +5,64 @@ from bioEN_functions import *
 from cryoEM_methods import *
 from reference_map_ADK import *
 from plot import *
+from os.path import exists
 import argparse
 
+
+import warnings
+warnings.filterwarnings('ignore')
+
+"""
+"" PATHWAYS
+"""
+
+situs_path = "/work/e280/e280-Christodoul/tomek/soft/Situs_3.1/bin/"
+structures_path = "structures/"
 
 """
 "" Input
 """
 
+def checker(a):
+    num = float(a)
+    if num != 10 and num != 6:
+        raise argparse.ArgumentTypeError('Invalid value. Only resolution equal to 6 or 10 are acceptable')
+    return num
+
+def checker_mask(mask_type):
+    if mask_type != 'exp' and mask_type != 'sim':
+        raise argparse.ArgumentTypeError('Invalid value. Mask can only be based on experimental (exp) or both experimental and simulations data (sim+exp)')
+    return mask_type
+
+
 parser = argparse.ArgumentParser(description='Running cryBioEN for ADK example')
-parser.add_argument('exp_map', help = 'Experimental map filename')
-parser.add_argument('weight', type = float, help = 'Weight for the 1AKE')
-parser.add_argument('resE', type = float, help = 'Experimental map resolution')
-parser.add_argument('noise', help = 'Noise level')
-parser.add_argument('mask', help = 'Type of mask')
-parser.add_argument('resG',help = 'Generated map resolution')
+parser.add_argument('weight', type = float, help = 'Weight for the 1AKE structure in the reference map')
+parser.add_argument('resM', type = checker, help = 'Reference map resolution')
+parser.add_argument('resG', type = float, help = 'Generated map resolution')
+parser.add_argument('noise', type = float, help = 'Noise level, which is defined as normal distribution centered around 0 and with std equal to X of the maximum density in the Reference map')
+parser.add_argument('mask_type', type = checker_mask, help = 'Type of mask: exp or sim')
+
+
 args = parser.parse_args()
 
 """
-"" MAP details
+"" MAP details based on 6A and 10A maps generated in ChimeraX
 """
+map_param = dict()
+if (args.resM == 6):
+    map_param['nx'] = 44
+    map_param['ny'] = 37
+    map_param['nz'] = 47
+    map_param['vox'] = 2.0
+    map_param['em_origin'] = np.array([-16.634,   7.903, -27.461])
+elif (args.resM == 10):
+    map_param['nx'] = 34
+    map_param['ny'] = 30
+    map_param['nz'] = 36
+    map_param['vox']= 3.3333335
+    map_param['em_origin'] = np.array([-28.634,  -4.097, -39.461])
 
-nx = 45
-ny = 45
-nz = 45
-origin = np.array([])
 
-voxel =
-
-
-# Getting cryoEM map properties
-map_param = reference_map(args.exp_map)
 # CryoEM paramters for map generators
 cryoem_param = cryoEM_parameters(map_param)
 
@@ -47,53 +74,78 @@ w_1ake = args.weight
 w_4ake = 1 - w_1ake
 em_weights = np.array([w_1ake,w_4ake])
 
-# map resolution
-sigma = float(args.resE)*0.225
+# reference map resolution
+sigma = args.resM*0.225
 
 # simulated map resolution
-sigma_sim = float(args.resG)*0.225
+sigma_sim = args.resG*0.225
 
 # average map
 em_map = pdb2map_avg(em_weights,sigma,["1ake.pdb","4ake_aln.pdb"],map_param,cryoem_param)
 
 # map with noise, which is normal distribution centered on 0 and with std equal to X% of the maximum density in the em_map
-noise = float(sys.argv[4])
+noise = args.noise
 em_map_noise = add_noise(em_map,noise)
 
 # noise based threshold - 3xstd of the noise level
 noise_thr = np.max(em_map)*noise*3
 
 # normalization
-em_map_norm = em_map_noise/np.max(em_map_noise)
-noise_thr_norm = noise_thr/np.max(em_map_noise)
+em_map_norm = (em_map_noise - np.mean(em_map_noise))/np.std(em_map_noise)
+noise_thr_norm = (noise_thr - np.mean(em_map_noise))/np.std(em_map_noise)
 
 # removing negative values of map (if em_map_norm < 0 -> 0)
-em_map_threshold = np.clip(em_map_norm,0,np.max(em_map_norm))
+#em_map_threshold = np.clip(em_map_norm,0,np.max(em_map_norm))
 
 # Mask of the EM map (where the density is > threshold)
-mask_exp = np.where(em_map_threshold > noise_thr_norm)
+mask_exp = np.where(em_map_norm > noise_thr_norm)
+
+# Saving original map with noise
+if exists("map_noise_"+str(w_1ake)+".mrc"):
+    os.system("rm map_noise_"+str(w_1ake)+".mrc")
+    write_map(em_map_noise,"map_noise_"+str(w_1ake)+".mrc",map_param)
+else: write_map(em_map_noise,"map_noise_"+str(w_1ake)+".mrc",map_param)
 
 # Saving normalized map with noise
-# os.system("rm map_norm_"+str(w_1ake)+".mrc")
-# write_map(em_map_norm,"map_norm_"+str(w_1ake)+".mrc",map_param)
+if exists("map_norm_"+str(w_1ake)+".mrc"):
+    os.system("rm map_norm_"+str(w_1ake)+".mrc")
+    write_map(em_map_norm,"map_norm_"+str(w_1ake)+".mrc",map_param)
+else: write_map(em_map_norm,"map_norm_"+str(w_1ake)+".mrc",map_param)
 
 # Saving normalized map with noise and without negative density
-os.system("rm map_thr_"+str(w_1ake)+".mrc")
-write_map(em_map_threshold,"map_thr_"+str(w_1ake)+".mrc",map_param)
+#os.system("rm map_thr_"+str(w_1ake)+".mrc")
+#write_map(em_map_threshold,"map_thr_"+str(w_1ake)+".mrc",map_param)
 
 """
 "" Fitting structures into density using Chimerax
 """
 # Fitting 1ake structures
-for i in range(1,51):
-    os.system('chimerax --nogui --exit --cmd "open map_thr_'+str(w_1ake)+'.mrc; open /home/didymos/Linux_05.2021/Projects/BioEN/ADK/1ake/structures/'+str(i)+'_fit.pdb; fitmap #2 inMap #1 resolution 6;save best.pdb models #2 relModel #1"')
-    os.system('mv best.pdb /home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/1ake/structures/'+str(i)+'_rb_fit.pdb')
+#for i in range(1,51):
+#    os.system('chimerax --nogui --exit --cmd "open map_norm_'+str(w_1ake)+'.mrc; open /home/didymos/Linux_05.2021/Projects/BioEN/ADK/1ake/structures/'+str(i)+'_fit.pdb; fitmap #2 inMap #1 resolution 6;save best.pdb models #2 relModel #1"')
+#    os.system('mv best.pdb /home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/1ake/structures/'+str(i)+'_rb_fit.pdb')
 
 
 # Fitting 4ake structures
+#for i in range(1,51):
+#    os.system('chimerax --nogui --exit --cmd "open map_norm_'+str(w_1ake)+'.mrc; open /home/didymos/Linux_05.2021/Projects/BioEN/ADK/4ake/structures/'+str(i)+'_fit.pdb; fitmap #2 inMap #1 resolution 6;save best.pdb models #2 relModel #1"')
+#    os.system('mv best.pdb /home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/4ake/structures/'+str(i)+'_rb_fit.pdb')
+
+
+"""
+"" Fitting structures into density using Situs
+"""
+# Fitting 1ake structures
 for i in range(1,51):
-    os.system('chimerax --nogui --exit --cmd "open map_thr_'+str(w_1ake)+'.mrc; open /home/didymos/Linux_05.2021/Projects/BioEN/ADK/4ake/structures/'+str(i)+'_fit.pdb; fitmap #2 inMap #1 resolution 6;save best.pdb models #2 relModel #1"')
-    os.system('mv best.pdb /home/didymos/Linux_05.2021/Projects/BioEN/ADK/cryoBioEN/tmp/4ake/structures/'+str(i)+'_rb_fit.pdb')
+    os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc '+structures_path+'1ake/'+str(i)+'.pdb -res '+str(args.resM)+' -nprocs 6')
+    os.system('mv col_best_001.pdb '+structures_path+'1ake/'+str(i)+'_fit.pdb')
+    os.system('rm col_*')
+
+
+for i in range(1,51):
+    os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc '+structures_path+'4ake/'+str(i)+'.pdb -res '+str(args.resM)+' -nprocs 6')
+    os.system('mv col_best_001.pdb '+structures_path+'4ake/'+str(i)+'_fit.pdb')
+    os.system('rm col_*')
+
 
 """
 "" STRUCTURAL ENSEMBLE
@@ -105,20 +157,23 @@ for i in range(1,51):
 # Number of structures/models
 N_models = 100
 
-PDBs_1ake = glob.glob("tmp/1ake/*rb_fit.pdb")[:50]
-PDBs_4ake = glob.glob("tmp/4ake/*rb_fit.pdb")[:50]
+PDBs_1ake = glob.glob(structures_path+'1ake/*_fit.pdb')[:50]
+PDBs_4ake = glob.glob(structures_path+'4ake/*_fit.pdb')[:50]
 
 # PDB files
 PDBs=PDBs_1ake+PDBs_4ake
 
 # Generating array of EM maps based on structures
+print("Generating an array of EM maps based on the structures from MD simulation")
 sim_em_data = np.array(pdb2map_array(PDBs,sigma_sim,map_param,cryoem_param))
 
-# sim_map = np.sum(sim_em_data,0)
+sim_map = np.sum(sim_em_data,0)
 
 # Saving normalized map with noise and without negative density
-# os.system("rm map_sim_"+str(w_1ake)+".mrc")
-# write_map(sim_map,"map_sim_"+str(w_1ake)+".mrc",map_param)
+if exists("map_sim_"+str(w_1ake)+".mrc"):
+    os.system("rm map_sim_"+str(w_1ake)+".mrc")
+    write_map(sim_map,"map_sim_"+str(w_1ake)+".mrc",map_param)
+else: write_map(sim_map,"map_sim_"+str(w_1ake)+".mrc",map_param)
 
 
 """
@@ -130,10 +185,10 @@ sim_em_data = np.array(pdb2map_array(PDBs,sigma_sim,map_param,cryoem_param))
 # SIM - when we also include voxels from the map generated for each fitted structure
 # for that we use threshold eaulat to 3x the simulated map std
 
-mask = sys.argv[5]
+mask = args.mask_type
 if (mask == "exp"):
     # Masked experimental data
-    exp_em_mask = em_map_threshold[mask_exp]
+    exp_em_mask = em_map_norm[mask_exp]
     # Number of non-zero voxels
     N_voxels=np.shape(mask_exp)[1]
     # New simulated map with only voxels corresponding to the experimental signal
@@ -141,21 +196,24 @@ if (mask == "exp"):
     for i in range(0,N_models):
         sim_em_v_data[i]=sim_em_data[i][mask_exp]
 
+# Mask for CCC calculations
+# Masked experimental data
+mask_exp_array=np.array(mask_exp)
+# generate mask over simulated density, using threshold equal to 3*std
+mask_sim = mask_sim_gen(sim_em_data,N_models)
+mask_comb = combine_masks(mask_exp_array,mask_sim)
 
-elif (mask == "sim"):
-    # Masked experimental data
-    mask_exp_array=np.array(mask_exp)
-    # generate mask over simulated density, using threshold equal to 3*std
-    mask_sim = mask_sim_gen(sim_em_data,N_models)
-    mask_comb = combine_masks(mask_exp_array,mask_sim)
+if (mask == "sim"):
     # Number of non-zero voxels
     N_voxels=np.shape(mask_comb)[1]
     # Masked experimental data
-    exp_em_mask = em_map_threshold[mask_comb]
+    exp_em_mask = em_map_norm[mask_comb]
     # New simulated map with only voxels corresponding to the exp+sim
     sim_em_v_data=np.zeros([N_models,N_voxels])
     for i in range(0,N_models):
         sim_em_v_data[i]=sim_em_data[i][mask_comb]
+
+
 
 """
 "" Optimization via Log-Weights as in Kofinger et. al 2019
@@ -191,6 +249,7 @@ maxiter = 5000
 n_iter = 10
 
 # Theta
+print("Running BioEN through preselected values of theta")
 thetas = [1000000,100000,10000,1000,100,10,1,0]
 
 # Running BioEN iterations through hyperparameter Theta:
@@ -213,6 +272,7 @@ theta_index = knee_loc(list(s_dict.values()),list(chisqrt_d.values()))
 theta_knee = thetas[theta_index]
 theta_index_sort = theta_index
 
+print("Running BioEN iterations to narrow down the theta value")
 for i in range(0,10):
     thetas_old = np.sort(list(w_opt_d.keys()))[::-1]
     theta_up = (thetas_old[theta_index_sort - 1] + thetas_old[theta_index_sort])/2.
@@ -230,6 +290,8 @@ for i in range(0,10):
     theta_index_sort = np.where(theta_new == thetas_sorted)[0][0]
 
 
+
+
 """
 "" PLOTS
 """
@@ -239,13 +301,13 @@ plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels,name)
 
 # WEIGHTS
 name = "weights_"+str(float(w_1ake))+".svg"
-plot_weights(w_opt_d,theta_new,name)
+plot_weights(w_opt_d,np.arange(0,N_models),theta_new,N_models,name)
 
 """
 "" CORRELATION with exp map
 """
 #cc,cc_prior,cc_single = map_correlations(sim_em_v_data,exp_em_mask,w_opt_d,w0,theta_new)
-cc,cc_prior,cc_single = map_correlations(sim_em_data,em_map_threshold,w_opt_d,w0,theta_new)
+cc,cc_prior,cc_single = map_correlations_mask(sim_em_data,em_map_norm,mask_comb,w_opt_d,w0,theta_new)
 
 # TOP 1 structure
 best = np.argsort(w_opt_d[theta_new])[::-1][0]
@@ -254,13 +316,21 @@ best = np.argsort(w_opt_d[theta_new])[::-1][0]
 "" WRITING POSTERIOR AND PRIOR MAP
 """
 # Saving posterior map
-os.system("rm map_posterior_"+str(w_1ake)+".mrc")
 sim_em_rew = np.dot(sim_em_data.T,w_opt_d[theta_new]).T
-write_map(sim_em_rew,"map_posterior_"+str(w_1ake)+".mrc",map_param)
+if exists("map_posterior_"+str(w_1ake)+".mrc"):
+    os.system("rm map_posterior_"+str(w_1ake)+".mrc")
+    write_map(sim_em_rew,"map_posterior_"+str(w_1ake)+".mrc",map_param)
+else: write_map(sim_em_rew,"map_posterior_"+str(w_1ake)+".mrc",map_param)
 
-os.system("rm map_prior_"+str(w_1ake)+".mrc")
+
+# Saving prior map
 sim_em_rew = np.dot(sim_em_data.T,w0).T
-write_map(sim_em_rew,"map_prior_"+str(w_1ake)+".mrc",map_param)
+if exists("map_prior_"+str(w_1ake)+".mrc"):
+    os.system("rm map_prior_"+str(w_1ake)+".mrc")
+    write_map(sim_em_rew,"map_prior_"+str(w_1ake)+".mrc",map_param)
+else: write_map(sim_em_rew,"map_prior_"+str(w_1ake)+".mrc",map_param)
+
+
 
 """
 "" WRITING STATISTICS
@@ -268,6 +338,7 @@ write_map(sim_em_rew,"map_prior_"+str(w_1ake)+".mrc",map_param)
 plik = open("statistics.dat","a")
 plik.write("POPULATION of 1AKE in the map: "+str(w_1ake)+"\n")
 plik.write("Theta value chosen by Kneedle algorithm: "+str(theta_new)+"\n")
+plik.write("Chisqrt value: "+str(chisqrt_d[theta_new])+"\n")
 plik.write("Population of 1ake: "+str(np.round(np.sum(w_opt_d[theta_new][:50]),2))+"\n")
 plik.write("Population of 4ake: "+str(np.round(np.sum(w_opt_d[theta_new][50:]),2))+"\n")
 plik.write("Posteriori Correlation: "+str(cc)+"\n")
@@ -275,3 +346,116 @@ plik.write("Priori Correlation: "+str(cc_prior)+"\n")
 plik.write("Single Best structure Correlation: "+str(cc_single)+"\n")
 plik.write("Single Best structure: "+str(PDBs[best])+"\n")
 plik.write("\n")
+
+
+
+"""
+"" ITERATIVE search of the smallest set of structures
+"" theta_new - selected theta value
+"" w_opt_d[theta_new] - weights corresponding to the selected theta
+"""
+
+# testing for which structure we do see weights to be lower than initial one
+# We will remove these structures and focus on optimizing weights for the remaining ones
+
+np.where(w_opt_d[theta_new]>w_init)
+selected_frames = np.where(w_opt_d[theta_new]>w_init)[0]
+selection = selected_frames
+new_chisqrt = chisqrt_d[theta_new]
+old_chisqrt = chisqrt_d[theta_new]
+
+"""
+"" Parameters for optimization algorithm
+"""
+# For now we can only use BFGS algorithm as is coded in SCIPY
+epsilon = 1e-08
+pgtol = 1e-05
+maxiter = 5000
+# Number of iterations
+n_iter = 10
+# Theta
+thetas = [1000000,100000,10000,1000,100,10,1,0]
+
+"""
+"" WHILE LOOP
+"""
+iteration = 1
+while (new_chisqrt<=old_chisqrt):
+    N_models_sel = len(selected_frames)
+    w0,w_init,g0,g_init,sf_init = bioen_init_uniform(N_models_sel)
+    # Selecting data
+    sim_em_v_data_selected = sim_em_v_data[selected_frames]
+    # Getting initial optimal scalling factor
+    sf_start = leastsq(coeff_fit, sf_init, args=(w0,std,sim_em_v_data_selected,exp_em_mask))[0]
+    # Running BioEN iterations through hyperparameter Theta:
+    # w_opt_array, S_array, chisqrt_array = bioen(sim_em_v_data,exp_em_mask,std,thetas, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+    # Running BioEN in a loop so we can apply knee dectection algorithm later
+    w_opt_d_sel = dict()
+    sf_opt_d_sel = dict()
+    s_dict_sel = dict()
+    chisqrt_d_sel = dict()
+    for th in thetas:
+        w_temp, sf_temp = bioen_single(sim_em_v_data_selected,exp_em_mask,std,th, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+        w_opt_d_sel[th] = w_temp
+        sf_opt_d_sel[th] = sf_temp
+        s_dict_sel[th] = get_entropy(w0,w_temp)
+        chisqrt_d_sel[th] = chiSqrTerm(w_temp,std,sim_em_v_data_selected*sf_temp,exp_em_mask)
+    # Knee locator used to find sensible theta value
+    theta_index = knee_loc(list(s_dict_sel.values()),list(chisqrt_d_sel.values()))
+    theta_knee = thetas[theta_index]
+    theta_index_sort = theta_index
+    for i in range(0,10):
+        thetas_old = np.sort(list(w_opt_d_sel.keys()))[::-1]
+        theta_up = (thetas_old[theta_index_sort - 1] + thetas_old[theta_index_sort])/2.
+        theta_down = (thetas_old[theta_index_sort + 1] + thetas_old[theta_index_sort])/2.
+        for th in theta_up,theta_down:
+            w_temp, sf_temp = bioen_single(sim_em_v_data_selected,exp_em_mask,std,th, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+            w_opt_d_sel[th] = w_temp
+            sf_opt_d_sel[th] = sf_temp
+            s_dict_sel[th] = get_entropy(w0,w_temp)
+            chisqrt_d_sel[th] = chiSqrTerm(w_temp,std,sim_em_v_data_selected*sf_temp,exp_em_mask)
+            # Knee locator
+        theta_index_new_sel = knee_loc(list(s_dict_sel.values()),list(chisqrt_d_sel.values()))
+        theta_new_sel = list(w_opt_d_sel.keys())[theta_index_new_sel]
+        thetas_sorted_sel = np.sort(list(w_opt_d_sel.keys()))[::-1]
+        theta_index_sort_sel = np.where(theta_new_sel == thetas_sorted_sel)[0][0]
+    # L-CURVE
+    name = "lcurve_"+str(float(w_1ake))+"_iter_"+str(iteration)+".svg"
+    plot_lcurve(s_dict_sel,chisqrt_d_sel,theta_new_sel,N_voxels,name)
+    # WEIGHTS
+    name = "weights_"+str(float(w_1ake))+"_iter_"+str(iteration)+".svg"
+    plot_weights(w_opt_d_sel,selection,theta_new_sel,N_models,name)
+    # Cross-correlation
+    cc_sel,cc_prior_sel,cc_single_sel = map_correlations_mask(sim_em_data[selection],em_map_norm,mask_comb,w_opt_d_sel,w0,theta_new_sel)
+    # Saving posterior map
+    sim_em_rew_sel = np.dot(sim_em_data[selection].T,w_opt_d_sel[theta_new_sel]).T
+    if exists("map_posterior_"+str(w_1ake)+"_iter_"+str(iteration)+".mrc"):
+        os.system("rm map_posterior_"+str(w_1ake)+"_iter_"+str(iteration)+".mrc")
+        write_map(sim_em_rew_sel,"map_posterior_"+str(w_1ake)+"_iter_"+str(iteration)+".mrc",map_param)
+    else: write_map(sim_em_rew_sel,"map_posterior_"+str(w_1ake)+"_iter_"+str(iteration)+".mrc",map_param)
+    # writing statistics
+    plik_sel = open("statistics_"+str(w_1ake)+"_iter.dat","a")
+    plik_weights = open("weights_"+str(w_1ake)+"_iter_"+str(iteration)+".dat","w")
+    plik_sel.write("ITERATION "+str(iteration)+"\n")
+    plik_sel.write("POPULATION of 1AKE in the map: "+str(w_1ake)+"\n")
+    plik_sel.write("Theta value chosen by Kneedle algorithm: "+str(theta_new_sel)+"\n")
+    plik_sel.write("Chisqrt value: "+str(chisqrt_d_sel[theta_new_sel])+"\n")
+    w_all = np.zeros(N_models)
+    w_all[selection] = w_opt_d_sel[theta_new_sel]
+    np.savetxt(plik_weights,w_all)
+    plik_weights.close()
+    plik_sel.write("Population of 1ake: "+str(np.round(np.sum(w_all[:50]),2))+"\n")
+    plik_sel.write("Population of 4ake: "+str(np.round(np.sum(w_all[50:]),2))+"\n")
+    plik_sel.write("Posteriori Correlation: "+str(cc_sel)+"\n")
+    plik_sel.write("Priori Correlation: "+str(cc_prior)+"\n")
+    plik_sel.write("\n")
+    selection = np.where(w_opt_d_sel[theta_new_sel]>w_init)[0]
+    temp_sel = selected_frames[selection]
+    selected_frames = temp_sel
+    selection = selected_frames
+    old_chisqrt = new_chisqrt
+    new_chisqrt = chisqrt_d_sel[theta_new_sel]
+    iteration+=1
+
+plik_sel.close()
+plik.close()
