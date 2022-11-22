@@ -3,7 +3,7 @@ import MDAnalysis
 import mrcfile
 from random import *
 from MDAnalysis.analysis import density
-
+from tqdm import tqdm
 
 
 ##################
@@ -55,8 +55,7 @@ def pdb2map_array(PDBs,sigma,map_param,cryoem_param):
     PREFACT = cryoem_param["prefact"]
     # prepare zero data
     data_array = []
-    for ipdb in range(0,len(PDBs)):
-        print(ipdb)
+    for ipdb in tqdm(range(0,len(PDBs))):
         data = np.zeros((nz,ny,nx), dtype=np.float32)
         u = MDAnalysis.Universe(PDBs[ipdb])
         # all-heavy selectors
@@ -254,5 +253,19 @@ def map_correlations(sim_em_data,em_map_threshold,w_opt_d,w0,theta_new):
     cc_single = []
     for i in sim_em_data:
         cc_single.append(np.dot(i.flatten(),em_map_threshold.flatten())/(np.linalg.norm(i.flatten())*np.linalg.norm(em_map_threshold.flatten())))
+    cc_single_best = np.max(cc_single)
+    return cc,cc_prior, cc_single_best
+
+def map_correlations_mask(sim_em_data,em_map,mask,w_opt_d,w0,theta_new):
+    sim_em_rew = np.dot(sim_em_data.T,w_opt_d[theta_new]).T[mask]
+    sim_em_prior = np.dot(sim_em_data.T,w0).T[mask]
+    # Posterior ensemble avg cc
+    cc = np.dot(sim_em_rew,em_map[mask])/(np.linalg.norm(sim_em_rew)*np.linalg.norm(em_map[mask]))
+    # Prior ensemble avg cc
+    cc_prior = np.dot(sim_em_prior,em_map[mask])/(np.linalg.norm(sim_em_prior)*np.linalg.norm(em_map[mask]))
+    # Single best strucute CC
+    cc_single = []
+    for i in sim_em_data:
+        cc_single.append(np.dot(i[mask],em_map[mask])/(np.linalg.norm(i[mask])*np.linalg.norm(em_map[mask])))
     cc_single_best = np.max(cc_single)
     return cc,cc_prior, cc_single_best
