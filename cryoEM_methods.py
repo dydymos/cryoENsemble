@@ -2,7 +2,7 @@ import numpy as np
 import MDAnalysis
 import mrcfile
 from MDAnalysis.analysis import density
-
+from tqdm import tqdm
 
 
 ##################
@@ -54,8 +54,7 @@ def pdb2map_array(PDBs,sigma,map_param,cryoem_param):
     PREFACT = cryoem_param["prefact"]
     # prepare zero data
     data_array = []
-    for ipdb in range(0,len(PDBs)):
-        print(ipdb)
+    for ipdb in tqdm(range(0,len(PDBs))):
         data = np.zeros((nz,ny,nx), dtype=np.float32)
         u = MDAnalysis.Universe(PDBs[ipdb])
         # all-heavy selectors

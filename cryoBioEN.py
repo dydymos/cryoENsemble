@@ -7,6 +7,8 @@ from reference_map_ADK import *
 from plot import *
 from os.path import exists
 import argparse
+from tqdm import tqdm
+
 
 
 import warnings
@@ -16,7 +18,7 @@ warnings.filterwarnings('ignore')
 "" PATHWAYS
 """
 
-situs_path = "/work/e280/e280-Christodoul/tomek/soft/Situs_3.1/bin/"
+situs_path = "/home/didymos/soft/Situs_3.1/bin/"
 structures_path = "structures/"
 
 """
@@ -135,7 +137,7 @@ else: write_map(em_map_norm,"map_norm_"+str(w_1ake)+".mrc",map_param)
 "" Fitting structures into density using Situs
 """
 # Fitting 1ake structures
-for i in range(1,51):
+for i in tqdm(range(1,51)):
     os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc '+structures_path+'1ake/'+str(i)+'.pdb -res '+str(args.resM)+' -nprocs 6')
     os.system('mv col_best_001.pdb '+structures_path+'1ake/'+str(i)+'_fit.pdb')
     os.system('rm col_*')
@@ -338,7 +340,7 @@ else: write_map(sim_em_rew,"map_prior_"+str(w_1ake)+".mrc",map_param)
 plik = open("statistics.dat","a")
 plik.write("POPULATION of 1AKE in the map: "+str(w_1ake)+"\n")
 plik.write("Theta value chosen by Kneedle algorithm: "+str(theta_new)+"\n")
-plik.write("Chisqrt value: "+str(chisqrt_d[theta_new])+"\n")
+plik.write("Reduced Chisqrt value: "+str(chisqrt_d[theta_new]/N_voxels)+"\n")
 plik.write("Population of 1ake: "+str(np.round(np.sum(w_opt_d[theta_new][:50]),2))+"\n")
 plik.write("Population of 4ake: "+str(np.round(np.sum(w_opt_d[theta_new][50:]),2))+"\n")
 plik.write("Posteriori Correlation: "+str(cc)+"\n")
@@ -439,7 +441,7 @@ while (new_chisqrt<=old_chisqrt):
     plik_sel.write("ITERATION "+str(iteration)+"\n")
     plik_sel.write("POPULATION of 1AKE in the map: "+str(w_1ake)+"\n")
     plik_sel.write("Theta value chosen by Kneedle algorithm: "+str(theta_new_sel)+"\n")
-    plik_sel.write("Chisqrt value: "+str(chisqrt_d_sel[theta_new_sel])+"\n")
+    plik_sel.write("Reduced Chisqrt value: "+str(chisqrt_d_sel[theta_new_sel]/N_voxels)+"\n")
     w_all = np.zeros(N_models)
     w_all[selection] = w_opt_d_sel[theta_new_sel]
     np.savetxt(plik_weights,w_all)
