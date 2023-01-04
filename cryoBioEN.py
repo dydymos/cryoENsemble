@@ -5,7 +5,6 @@ from bioEN_functions import *
 from cryoEM_methods import *
 from reference_map_ADK import *
 from plot import *
-from os.path import exists
 import argparse
 from tqdm import tqdm
 
@@ -40,7 +39,6 @@ def checker_mask(mask_type):
 parser = argparse.ArgumentParser(description='Running cryBioEN for ADK example')
 parser.add_argument('weight', type = float, help = 'Weight for the 1AKE structure in the reference map')
 parser.add_argument('resM', type = checker, help = 'Reference map resolution')
-parser.add_argument('resG', type = float, help = 'Generated map resolution')
 parser.add_argument('noise', type = float, help = 'Noise level, which is defined as normal distribution centered around 0 and with std equal to X of the maximum density in the Reference map')
 parser.add_argument('mask_type', type = checker_mask, help = 'Type of mask: exp or sim')
 
@@ -76,14 +74,11 @@ w_1ake = args.weight
 w_4ake = 1 - w_1ake
 em_weights = np.array([w_1ake,w_4ake])
 
-# reference map resolution
+# reference map resolution based on ChimeraX
 sigma = args.resM*0.225
 
-# simulated map resolution
-sigma_sim = args.resG*0.225
-
-# average map
-em_map = pdb2map_avg(em_weights,sigma,["1ake.pdb","4ake_aln.pdb"],map_param,cryoem_param)
+# average reference map with predefined resolution based on ChimeraX molmap
+em_map = pdb2map_avg_chimeraX(em_weights,args.resM,["1ake.pdb","4ake_aln.pdb"],map_param,cryoem_param)
 
 # map with noise, which is normal distribution centered on 0 and with std equal to X% of the maximum density in the em_map
 noise = args.noise
@@ -102,17 +97,14 @@ noise_thr_norm = (noise_thr - np.mean(em_map_noise))/np.std(em_map_noise)
 # Mask of the EM map (where the density is > threshold)
 mask_exp = np.where(em_map_norm > noise_thr_norm)
 
+# Saving original map
+write_map(em_map,"map_"+str(w_1ake)+".mrc",map_param)
+
 # Saving original map with noise
-if exists("map_noise_"+str(w_1ake)+".mrc"):
-    os.system("rm map_noise_"+str(w_1ake)+".mrc")
-    write_map(em_map_noise,"map_noise_"+str(w_1ake)+".mrc",map_param)
-else: write_map(em_map_noise,"map_noise_"+str(w_1ake)+".mrc",map_param)
+write_map(em_map_noise,"map_noise_"+str(w_1ake)+".mrc",map_param)
 
 # Saving normalized map with noise
-if exists("map_norm_"+str(w_1ake)+".mrc"):
-    os.system("rm map_norm_"+str(w_1ake)+".mrc")
-    write_map(em_map_norm,"map_norm_"+str(w_1ake)+".mrc",map_param)
-else: write_map(em_map_norm,"map_norm_"+str(w_1ake)+".mrc",map_param)
+write_map(em_map_norm,"map_norm_"+str(w_1ake)+".mrc",map_param)
 
 # Saving normalized map with noise and without negative density
 #os.system("rm map_thr_"+str(w_1ake)+".mrc")
@@ -143,11 +135,10 @@ for i in tqdm(range(1,51)):
     os.system('rm col_*')
 
 
-for i in range(1,51):
+for i in tqdm(range(1,51)):
     os.system(situs_path+'colores map_norm_'+str(w_1ake)+'.mrc '+structures_path+'4ake/'+str(i)+'.pdb -res '+str(args.resM)+' -nprocs 6')
     os.system('mv col_best_001.pdb '+structures_path+'4ake/'+str(i)+'_fit.pdb')
     os.system('rm col_*')
-
 
 """
 "" STRUCTURAL ENSEMBLE
@@ -167,15 +158,13 @@ PDBs=PDBs_1ake+PDBs_4ake
 
 # Generating array of EM maps based on structures
 print("Generating an array of EM maps based on the structures from MD simulation")
-sim_em_data = np.array(pdb2map_array(PDBs,sigma_sim,map_param,cryoem_param))
+sim_em_data = np.array(pdb2map_array(PDBs,map_param,cryoem_param))
 
 sim_map = np.sum(sim_em_data,0)
 
 # Saving normalized map with noise and without negative density
-if exists("map_sim_"+str(w_1ake)+".mrc"):
-    os.system("rm map_sim_"+str(w_1ake)+".mrc")
-    write_map(sim_map,"map_sim_"+str(w_1ake)+".mrc",map_param)
-else: write_map(sim_map,"map_sim_"+str(w_1ake)+".mrc",map_param)
+write_map(sim_map,"map_sim_"+str(w_1ake)+".mrc",map_param)
+
 
 
 """
@@ -185,7 +174,7 @@ else: write_map(sim_map,"map_sim_"+str(w_1ake)+".mrc",map_param)
 # Masking can take place in two ways:
 # EXP - when we use mask generated from experimental map
 # SIM - when we also include voxels from the map generated for each fitted structure
-# for that we use threshold eaulat to 3x the simulated map std
+# for that we use threshold equal to 3x the simulated map std
 
 mask = args.mask_type
 if (mask == "exp"):
@@ -214,8 +203,6 @@ if (mask == "sim"):
     sim_em_v_data=np.zeros([N_models,N_voxels])
     for i in range(0,N_models):
         sim_em_v_data[i]=sim_em_data[i][mask_comb]
-
-
 
 """
 "" Optimization via Log-Weights as in Kofinger et. al 2019
@@ -252,7 +239,7 @@ n_iter = 10
 
 # Theta
 print("Running BioEN through preselected values of theta")
-thetas = [1000000,100000,10000,1000,100,10,1,0]
+thetas = [10000000,1000000,100000,10000,1000,100,10,1,0]
 
 # Running BioEN iterations through hyperparameter Theta:
 # w_opt_array, S_array, chisqrt_array = bioen(sim_em_v_data,exp_em_mask,std,thetas, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
@@ -274,8 +261,9 @@ theta_index = knee_loc(list(s_dict.values()),list(chisqrt_d.values()))
 theta_knee = thetas[theta_index]
 theta_index_sort = theta_index
 
-print("Running BioEN iterations to narrow down the theta value")
+print("\nRunning BioEN iterations to narrow down the theta value")
 for i in range(0,10):
+    print("Round "+str(i+1)+" out of 10:")
     thetas_old = np.sort(list(w_opt_d.keys()))[::-1]
     theta_up = (thetas_old[theta_index_sort - 1] + thetas_old[theta_index_sort])/2.
     theta_down = (thetas_old[theta_index_sort + 1] + thetas_old[theta_index_sort])/2.
@@ -319,18 +307,12 @@ best = np.argsort(w_opt_d[theta_new])[::-1][0]
 """
 # Saving posterior map
 sim_em_rew = np.dot(sim_em_data.T,w_opt_d[theta_new]).T
-if exists("map_posterior_"+str(w_1ake)+".mrc"):
-    os.system("rm map_posterior_"+str(w_1ake)+".mrc")
-    write_map(sim_em_rew,"map_posterior_"+str(w_1ake)+".mrc",map_param)
-else: write_map(sim_em_rew,"map_posterior_"+str(w_1ake)+".mrc",map_param)
+write_map(sim_em_rew,"map_posterior_"+str(w_1ake)+".mrc",map_param)
 
 
 # Saving prior map
 sim_em_rew = np.dot(sim_em_data.T,w0).T
-if exists("map_prior_"+str(w_1ake)+".mrc"):
-    os.system("rm map_prior_"+str(w_1ake)+".mrc")
-    write_map(sim_em_rew,"map_prior_"+str(w_1ake)+".mrc",map_param)
-else: write_map(sim_em_rew,"map_prior_"+str(w_1ake)+".mrc",map_param)
+write_map(sim_em_rew,"map_prior_"+str(w_1ake)+".mrc",map_param)
 
 
 
@@ -376,11 +358,12 @@ maxiter = 5000
 # Number of iterations
 n_iter = 10
 # Theta
-thetas = [1000000,100000,10000,1000,100,10,1,0]
+thetas = [10000000,1000000,100000,10000,1000,100,10,1,0]
 
 """
 "" WHILE LOOP
 """
+print("\nRunning BioEN iterations to find the smalles set of structures\n")
 iteration = 1
 while (new_chisqrt<=old_chisqrt):
     N_models_sel = len(selected_frames)
@@ -405,11 +388,12 @@ while (new_chisqrt<=old_chisqrt):
     # Knee locator used to find sensible theta value
     theta_index = knee_loc(list(s_dict_sel.values()),list(chisqrt_d_sel.values()))
     theta_knee = thetas[theta_index]
-    theta_index_sort = theta_index
+    theta_index_sort_sel = theta_index
     for i in range(0,10):
+        print("Round "+str(i+1)+" out of 10:")
         thetas_old = np.sort(list(w_opt_d_sel.keys()))[::-1]
-        theta_up = (thetas_old[theta_index_sort - 1] + thetas_old[theta_index_sort])/2.
-        theta_down = (thetas_old[theta_index_sort + 1] + thetas_old[theta_index_sort])/2.
+        theta_up = (thetas_old[theta_index_sort_sel - 1] + thetas_old[theta_index_sort_sel])/2.
+        theta_down = (thetas_old[theta_index_sort_sel + 1] + thetas_old[theta_index_sort_sel])/2.
         for th in theta_up,theta_down:
             w_temp, sf_temp = bioen_single(sim_em_v_data_selected,exp_em_mask,std,th, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
             w_opt_d_sel[th] = w_temp
@@ -431,10 +415,7 @@ while (new_chisqrt<=old_chisqrt):
     cc_sel,cc_prior_sel,cc_single_sel = map_correlations_mask(sim_em_data[selection],em_map_norm,mask_comb,w_opt_d_sel,w0,theta_new_sel)
     # Saving posterior map
     sim_em_rew_sel = np.dot(sim_em_data[selection].T,w_opt_d_sel[theta_new_sel]).T
-    if exists("map_posterior_"+str(w_1ake)+"_iter_"+str(iteration)+".mrc"):
-        os.system("rm map_posterior_"+str(w_1ake)+"_iter_"+str(iteration)+".mrc")
-        write_map(sim_em_rew_sel,"map_posterior_"+str(w_1ake)+"_iter_"+str(iteration)+".mrc",map_param)
-    else: write_map(sim_em_rew_sel,"map_posterior_"+str(w_1ake)+"_iter_"+str(iteration)+".mrc",map_param)
+    write_map(sim_em_rew_sel,"map_posterior_"+str(w_1ake)+"_iter_"+str(iteration)+".mrc",map_param)
     # writing statistics
     plik_sel = open("statistics_"+str(w_1ake)+"_iter.dat","a")
     plik_weights = open("weights_"+str(w_1ake)+"_iter_"+str(iteration)+".dat","w")
