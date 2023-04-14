@@ -26,8 +26,8 @@ structures_path = "structures/"
 
 def checker(a):
     num = float(a)
-    if num != 10 and num != 6:
-        raise argparse.ArgumentTypeError('Invalid value. Only resolution equal to 6 or 10 are acceptable')
+    if num != 10 and num != 6 and num != 3:
+        raise argparse.ArgumentTypeError('Invalid value. Only resolution equal to 3, 6 or 10 are acceptable')
     return num
 
 def checker_mask(mask_type):
@@ -38,7 +38,7 @@ def checker_mask(mask_type):
 
 parser = argparse.ArgumentParser(description='Running cryBioEN for ADK example')
 parser.add_argument('weight', type = float, help = 'Weight for the 1AKE structure in the reference map')
-parser.add_argument('resM', type = checker, help = 'Reference map resolution')
+parser.add_argument('resM', type = checker, help = 'Reference map resolution [3, 6 or 10A]')
 parser.add_argument('noise', type = float, help = 'Noise level, which is defined as normal distribution centered around 0 and with std equal to X of the maximum density in the Reference map')
 parser.add_argument('mask_type', type = checker_mask, help = 'Type of mask: exp or sim')
 
@@ -46,10 +46,16 @@ parser.add_argument('mask_type', type = checker_mask, help = 'Type of mask: exp 
 args = parser.parse_args()
 
 """
-"" MAP details based on 6A and 10A maps generated in ChimeraX
+"" MAP details based on 3A, 6A and 10A maps generated in ChimeraX
 """
 map_param = dict()
-if (args.resM == 6):
+if (args.resM == 3):
+    map_param['nx'] = 70
+    map_param['ny'] = 56
+    map_param['nz'] = 76
+    map_param['vox'] = 1.0
+    map_param['em_origin'] = np.array([-7.634, 16.903, -18.461])
+elif (args.resM == 6):
     map_param['nx'] = 44
     map_param['ny'] = 37
     map_param['nz'] = 47
