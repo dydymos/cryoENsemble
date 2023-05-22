@@ -245,31 +245,3 @@ def combine_masks(mask_exp,mask_sim):
     mask_final_uniq=(np.unique(mask_final,axis=1)[0],np.unique(mask_final,axis=1)[1],np.unique(mask_final,axis=1)[2])
     return mask_final_uniq
 
-def map_correlations(sim_em_data,em_map,w_opt_d,w0,theta_new):
-    sim_em_rew = np.dot(sim_em_data.T,w_opt_d[theta_new]).T.flatten()
-    sim_em_prior = np.dot(sim_em_data.T,w0).T.flatten()
-    # Posterior ensemble avg cc
-    cc = np.dot(sim_em_rew,em_map.flatten())/(np.linalg.norm(sim_em_rew)*np.linalg.norm(em_map.flatten()))
-    # Prior ensemble avg cc
-    cc_prior = np.dot(sim_em_prior,em_map.flatten())/(np.linalg.norm(sim_em_prior)*np.linalg.norm(em_map.flatten()))
-    # Single best strucute CC
-    cc_single = []
-    for i in sim_em_data:
-        cc_single.append(np.dot(i.flatten(),em_map.flatten())/(np.linalg.norm(i.flatten())*np.linalg.norm(em_map.flatten())))
-    cc_single_best = np.max(cc_single)
-    return cc,cc_prior, cc_single_best
-
-
-def map_correlations_mask(sim_em_data,em_map,mask,w_opt_d,w0,theta_new):
-    sim_em_rew = np.dot(sim_em_data.T,w_opt_d[theta_new]).T[mask]
-    sim_em_prior = np.dot(sim_em_data.T,w0).T[mask]
-    # Posterior ensemble avg cc
-    cc = np.dot(sim_em_rew,em_map[mask])/(np.linalg.norm(sim_em_rew)*np.linalg.norm(em_map[mask]))
-    # Prior ensemble avg cc
-    cc_prior = np.dot(sim_em_prior,em_map[mask])/(np.linalg.norm(sim_em_prior)*np.linalg.norm(em_map[mask]))
-    # Single best strucute CC
-    cc_single = []
-    for i in sim_em_data:
-        cc_single.append(np.dot(i[mask],em_map[mask])/(np.linalg.norm(i[mask])*np.linalg.norm(em_map[mask])))
-    cc_single_best = np.max(cc_single)
-    return cc,cc_prior, cc_single_best
