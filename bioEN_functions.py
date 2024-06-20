@@ -1,9 +1,10 @@
 import numpy as np
 import scipy.optimize as sopt
 from scipy.optimize import leastsq
+from scipy.optimize import minimize,Bounds
 import kneed
 from kneed import KneeLocator
-
+from scipy.ndimage import gaussian_filter
 
 def chiSqrTerm(w,std, sim_map_m, exp_map):
     """
@@ -12,7 +13,6 @@ def chiSqrTerm(w,std, sim_map_m, exp_map):
     v = (np.sum(sim_map_m.T*w,1) - exp_map)/std
     chiSqr = 0.5 * np.sum(v*v)
     return chiSqr
-
 
 
 def coeff_fit(sf, w_opt, std, sim_map_m, exp_map):
@@ -24,6 +24,16 @@ def coeff_fit(sf, w_opt, std, sim_map_m, exp_map):
     return chiSqrTerm(w_opt,std, sim_map_sf, exp_map)
 
 
+def sigma_fit(sigma, w_opt, std, sim_map_m, exp_map,mask):
+    """
+    Reads simulated maps, applies gaussian filter with certain sigma
+    to compare them to experimental values
+    """
+    sim_map_sf = [gaussian_filter(map,sigma[0]) for map in sim_map_m]
+    sim_map_sf_masked = np.array([map[mask] for map in sim_map_sf])
+    v = (np.sum(sim_map_sf_masked.T*w_opt,1) - exp_map)/std
+    chiSqr = 0.5 * np.sum(v*v)
+    return chiSqr
 
 def getWeights(g):
     """
@@ -96,74 +106,33 @@ def bioen_init_uniform(N_models):
     sf_init = 1.0
     return w0,w_init,g0,g_init,sf_init
 
-def bioen(sim_em_v_data,exp_em_mask,std,thetas,g0,g_init,sf_start,n_iter,epsilon,pgtol,maxiter):
-    """
-    "" ITERATIONS THROUGHT Thetas
-    """
-    w_opt_array = []
-    f_min_array = []
-    sf_opt_array = []
-    for theta in thetas:
-        print("THETA = "+str(theta))
-        g = g_init
-        sim_em_v=sim_em_v_data*sf_start
-        sf_opt = sf_start
-        for i in range(0,n_iter):
-            if (i == 0):
-                print("ITERATION "+str(i+1))
-                # Getting optimal weight
-                res=sopt.fmin_l_bfgs_b(bioen_log_posterior_base,g,args = (g0, std, sim_em_v, exp_em_mask, theta),fprime = grad_bioen_log_posterior_base, epsilon = epsilon, pgtol = pgtol, maxiter = maxiter, disp = False)
-                # new weights
-                w_opt = getWeights(res[0])[0]
-                # final energy
-                fmin = res[1]
-                fmin_old = fmin
-                print("fmin    = ", fmin)
-                # Using new weights to get new scalling factor
-                sf_ = leastsq(coeff_fit, sf_opt, args=(w_opt,std, sim_em_v_data,exp_em_mask))[0]
-                sf_opt = sf_
-                # geting new sim data with new nuisance parameter
-                sim_em_v = sim_em_v_data * sf_opt
-            else:
-                print("ITERATION "+str(i+1))
-                # Getting optimal weight
-                res=sopt.fmin_l_bfgs_b(bioen_log_posterior_base,g,args = (g0, std, sim_em_v, exp_em_mask, theta),fprime = grad_bioen_log_posterior_base, epsilon = epsilon, pgtol = pgtol, maxiter = maxiter, disp = False)
-                # new weights
-                w_opt = getWeights(res[0])[0]
-                # final energy
-                fmin = res[1]
-                if (fmin == fmin_old):
-                    print("fmin    = ", fmin)
-                    print("CONVERGENCE")
-                    break
-                else:
-                    fmin_old = fmin
-                    print("fmin    = ", fmin)
-                    # Using new weights to get new scalling factor
-                    sf_ = leastsq(coeff_fit, sf_opt, args=(w_opt,std, sim_em_v_data,exp_em_mask))[0]
-                    sf_opt = sf_
-                    # geting new sim data with new nuisance parameter
-                    sim_em_v = sim_em_v_data * sf_opt
-        sf_opt_array.append(sf_opt)
-        w_opt_array.append(w_opt)
-        f_min_array.append(fmin)
-    S_array = [get_entropy(w0,i) for i in w_opt_array]
-    chisqrt_array = [chiSqrTerm(w_opt_array[i],std,sim_em_v_data*sf_opt_array[i],exp_em_mask) for i in range(0,len(thetas))]
-    return w_opt_array, S_array, chisqrt_array
 
-def bioen_single(sim_em_v_data,exp_em_mask,std,theta,g0,g_init,sf_start,n_iter,epsilon,pgtol,maxiter):
+def bioen_sigma(sim_map_array,exp_map_norm,mask,std,theta,g0,g_init,sf_start,sigma0,resolution,n_iter,epsilon,pgtol,maxiter):
     """
     "" Single run of BioEN - with one theta value
     """
     print("THETA = "+str(theta))
     g = g_init
-    sim_em_v=sim_em_v_data*sf_start
+    # Initial sigma
+    sigma_min = 1 * 0.225
+    sigma_max = resolution * 0.225
+    bounds = Bounds([sigma_min], [sigma_max])
+    sim_map_array_g = gaussian_filter(sim_map_array,sigma0)
+    N_models = np.shape(sim_map_array)[0]
+    N_voxels = N_voxels=np.shape(mask)[1]
+    sim_map_array_mask=np.zeros([N_models,N_voxels])
+    for i in range(0,N_models):
+        sim_map_array_mask[i] = sim_map_array_g[i][mask]
+    sim_map_array_mask_sf = sim_map_array_mask * sf_start
+    exp_map_mask = exp_map_norm[mask]
     sf_opt = sf_start
+    chisqr0 = chiSqr(np.ones(N_models)/N_models,std,sim_map_array_g*sf_start,exp_map_norm,mask)
+    print("ChiSqr0    = ", chisqr0)
     for i in range(0,n_iter):
         if (i == 0):
             print("ITERATION "+str(i+1))
             # Getting optimal weight
-            res=sopt.fmin_l_bfgs_b(bioen_log_posterior_base,g,args = (g0, std, sim_em_v, exp_em_mask, theta),fprime = grad_bioen_log_posterior_base, epsilon = epsilon, pgtol = pgtol, maxiter = maxiter, disp = False)
+            res=sopt.fmin_l_bfgs_b(bioen_log_posterior_base,g,args = (g0, std, sim_map_array_mask_sf, exp_map_mask, theta),fprime = grad_bioen_log_posterior_base, epsilon = epsilon, pgtol = pgtol, maxiter = maxiter, disp = False)
             # new weights
             w_opt = getWeights(res[0])[0]
             # final energy
@@ -171,40 +140,83 @@ def bioen_single(sim_em_v_data,exp_em_mask,std,theta,g0,g_init,sf_start,n_iter,e
             fmin_old = fmin
             print("fmin    = ", fmin)
             # Using new weights to get new scalling factor
-            sf_ = leastsq(coeff_fit, sf_opt, args=(w_opt,std, sim_em_v_data,exp_em_mask))[0]
+            sf_ = leastsq(coeff_fit, sf_opt, args=(w_opt,std, sim_map_array_mask,exp_map_mask))[0]
             sf_opt = sf_
-            # geting new sim data with new nuisance parameter
-            sim_em_v = sim_em_v_data * sf_opt
+            # Using new weights to get new sigma
+            sigma_ = minimize(sigma_fit, [sigma_min], args=(w_opt,std,sim_map_array*sf_opt,exp_map_norm,mask),method="L-BFGS-B",bounds=bounds).x[0]
+            sigma_opt = sigma_
+            sim_map_array_g = gaussian_filter(sim_map_array,sigma_opt)
+            for i in range(0,N_models):
+                sim_map_array_mask[i] = sim_map_array_g[i][mask]
+            sim_map_array_mask_sf = sim_map_array_mask * sf_opt
+            chisqr_iter = chiSqr(w_opt,std,sim_map_array_g*sf_opt,exp_map_norm,mask)
+            print("ChiSqr    = ", chisqr_iter)
         else:
             print("ITERATION "+str(i+1))
             # Getting optimal weight
-            res=sopt.fmin_l_bfgs_b(bioen_log_posterior_base,g,args = (g0, std, sim_em_v, exp_em_mask, theta),fprime = grad_bioen_log_posterior_base, epsilon = epsilon, pgtol = pgtol, maxiter = maxiter, disp = False)
+            res=sopt.fmin_l_bfgs_b(bioen_log_posterior_base,g,args = (g0, std, sim_map_array_mask_sf, exp_map_mask, theta),fprime = grad_bioen_log_posterior_base, epsilon = epsilon, pgtol = pgtol, maxiter = maxiter, disp = False)
             # new weights
-            w_opt = getWeights(res[0])[0]
             # final energy
             fmin = res[1]
             if (fmin == fmin_old):
                 print("fmin    = ", fmin)
-                print("CONVERGENCE")
+                print("ChiSqr    = ", chisqr_iter)
+                print("CONVERGENCE\n")
+                break
+            if (fmin > fmin_old):
+                print("fmin    = ", fmin)
+                print("ChiSqr    = ", chisqr_iter)
+                print("ALREADY MINIMUM\n")
                 break
             else:
+                w_opt = getWeights(res[0])[0]
                 fmin_old = fmin
                 print("fmin    = ", fmin)
                 # Using new weights to get new scalling factor
-                sf_ = leastsq(coeff_fit, sf_opt, args=(w_opt,std, sim_em_v_data,exp_em_mask))[0]
+                sf_ = leastsq(coeff_fit, sf_opt, args=(w_opt,std, sim_map_array_mask,exp_map_mask))[0]
                 sf_opt = sf_
-                # geting new sim data with new nuisance parameter
-                sim_em_v = sim_em_v_data * sf_opt
-    return w_opt, sf_opt
+                # Using new weights to get new sigma
+                sigma_ = minimize(sigma_fit, [sigma_min], args=(w_opt,std,sim_map_array*sf_opt,exp_map_norm,mask),method="L-BFGS-B",bounds=bounds).x[0]
+                sigma_opt = sigma_
+                sim_map_array_g = gaussian_filter(sim_map_array,sigma_opt)
+                for i in range(0,N_models):
+                    sim_map_array_mask[i] = sim_map_array_g[i][mask]
+                sim_map_array_mask_sf = sim_map_array_mask * sf_opt
+                chisqr_iter = chiSqr(w_opt,std,sim_map_array_g*sf_opt,exp_map_norm,mask)
+                print("ChiSqr    = ", chisqr_iter)
+    return w_opt, sf_opt, sigma_opt
 
 
+
+def bioen_sigma_one(sim_map_g_mask,exp_map_mask,std,theta,g0,g_init,epsilon,pgtol,maxiter):
+    """
+    "" Single run of BioEN - with one theta value
+    """
+    print("THETA = "+str(theta))
+    g = g_init
+    N = np.shape(sim_map_g_mask)[0]
+    w0 = np.ones(N)/N
+    chisqrt = chiSqrTerm(w0,std,sim_map_g_mask,exp_map_mask)
+    print("Starting ChiSqrt = "+str(chisqrt))
+    # Getting optimal weight
+    res=sopt.fmin_l_bfgs_b(bioen_log_posterior_base,g,args = (g0, std, sim_map_g_mask, exp_map_mask, theta),fprime = grad_bioen_log_posterior_base, epsilon = epsilon, pgtol = pgtol, maxiter = maxiter, disp = False)
+    # new weights
+    w_opt = getWeights(res[0])[0]
+    # final energy
+    fmin = res[1]
+    fmin_old = fmin
+    print("fmin    = ", fmin)
+    # geting new sim data with new nuisance parameter
+    chisqrt = chiSqrTerm(w_opt,std,sim_map_g_mask,exp_map_mask)
+    print("ChiSqrt = "+str(chisqrt))
+    return w_opt
 
 
 def get_entropy(w0, weights):
     """
     Calculate entropy - Kullback-Leibler divergence
     """
-    s = - np.sum(weights * np.log(weights / w0))
+    s = -np.sum(weights * np.log(weights / w0))
     return s
 
 def knee_loc(S_array,chisqrt_array):

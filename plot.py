@@ -82,3 +82,42 @@ def plot_smoc(smoc_prior,smoc_poster,name):
     plt.clf()
 
 
+def plot_rmsf(rmsf_open_prior,rmsf_close_prior,rmsf_open_post,rmsf_close_post,name):
+    plt.plot(rmsf_open_prior,label="target open",ls='--',color="C0")
+    plt.plot(rmsf_close_prior,label="target close",ls='--',color="C1")
+    plt.plot(rmsf_open_post,label="open posterior",color="C0")
+    plt.plot(rmsf_close_post,label="close posterior",color="C1")
+    plt.xlabel('Residue')
+    plt.ylabel('RMSF (Å)')
+    plt.title('RMSF of Backbone Atoms')
+    plt.legend()
+    plt.savefig(name)
+    plt.clf()
+
+def plot_pca(dot_products_open,dot_products_close,name):
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1,2,1)
+    # Plot open state dot product matrix
+    im_open = plt.imshow(np.abs(dot_products_open), cmap='coolwarm_r', aspect='auto',vmax=1.0)
+    # Set x and y ticks to correspond to 1, 2, 3
+    plt.title("Open state")
+    plt.xticks(ticks=[0, 1, 2], labels=['1', '2', '3'])
+    plt.yticks(ticks=[0, 1, 2], labels=['1', '2', '3'])
+    # Add colorbar
+    plt.colorbar()
+    # Display the plot
+    plt.xlabel('Prior Main Eigenvectors')
+    plt.ylabel('Posterior Main Eigenvectors')
+    plt.subplot(1,2,2)
+    # Plot close state dot product matrix
+    im_close = plt.imshow(np.abs(dot_products_close), cmap='coolwarm_r', aspect='auto',vmax=1.0)
+    # Set x and y ticks to correspond to 1, 2, 3
+    plt.title("Close state")
+    plt.xticks(ticks=[0, 1, 2], labels=['1', '2', '3'])
+    plt.yticks(ticks=[0, 1, 2], labels=['1', '2', '3'])
+    # Add colorbar
+    plt.colorbar()
+    # Display the plot
+    plt.xlabel('Prior Main Eigenvectors')
+    plt.ylabel('Posterior Main Eigenvectors')
+    plt.savefig(name)

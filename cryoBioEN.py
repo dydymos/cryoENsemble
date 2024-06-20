@@ -100,12 +100,12 @@ em_map_noise = add_noise(em_map,noise)
 # noise based threshold - 3xstd of the noise level
 noise_thr = np.max(em_map)*noise*3
 
-# normalization
-em_map_norm = (em_map_noise - np.mean(em_map_noise))/np.std(em_map_noise)
-noise_thr_norm = (noise_thr - np.mean(em_map_noise))/np.std(em_map_noise)
-
 # removing negative values of map (if em_map_norm < 0 -> 0)
-#em_map_threshold = np.clip(em_map_norm,0,np.max(em_map_norm))
+em_map_threshold = np.clip(em_map_noise,0,np.max(em_map_noise))
+
+# Scale distribution to range between 0 and 1
+em_map_norm = (em_map_threshold - np.min(em_map_threshold))/(np.max(em_map_threshold) - np.min(em_map_threshold))
+noise_thr_norm = (noise_thr - np.min(em_map_threshold))/(np.max(em_map_threshold) - np.min(em_map_threshold))
 
 # Mask of the EM map (where the density is > threshold)
 mask_exp = np.where(em_map_norm > noise_thr_norm)
@@ -179,6 +179,9 @@ PDBs=PDBs_1ake+PDBs_4ake
 print("Generating an array of EM maps based on the structures from MD simulation")
 sim_em_data = np.array(pdb2map_array(PDBs,map_param,cryoem_param))
 
+# Normalization
+sim_em_data /= np.max(sim_em_data, axis=(1, 2, 3)).reshape(-1, 1, 1, 1)
+
 sim_map = np.sum(sim_em_data,0)
 
 # Saving normalized map with noise and without negative density
@@ -223,12 +226,6 @@ if (mask == "sim"):
     for i in range(0,N_models):
         sim_em_v_data[i]=sim_em_data[i][mask_comb]
 
-# Mask for masked CC, we select voxels that are specific to either just open or just close state
-# First we need to define threshold based on standard of deviation in the map
-threshold_open = 2*np.std(em_map_open[np.where(em_map_open>0.0)[0]])
-threshold_close = 2*np.std(em_map_close[np.where(em_map_close>0.0)[0]])
-mask_open_spec = np.where((em_map_open>threshold_open) & (em_map_close<threshold_close))
-mask_close_spec = np.where((em_map_close>threshold_close) & (em_map_open<threshold_open))
 
 """
 "" Optimization via Log-Weights as in Kofinger et. al 2019
@@ -326,12 +323,6 @@ plot_weights(w_opt_d,np.arange(0,N_models),theta_new,N_models,name)
 cc,cc_prior,cc_single = map_correlations_mask(sim_em_data,em_map_norm,mask_comb,w_opt_d,w0,theta_new)
 cc_r,cc_prior_r,cc_single_r = map_correlations_mask(sim_em_data,em_map_norm,mask_exp,w_opt_d,w0,theta_new)
 
-#Local CC - masked CC
-cc_open,cc_prior_open,cc_single_open = map_correlations_mask(sim_em_data,em_map_norm,mask_open_spec,w_opt_d,w0,theta_new)
-cc_close,cc_prior_close,cc_single_close = map_correlations_mask(sim_em_data,em_map_norm,mask_close_spec,w_opt_d,w0,theta_new)
-
-# TOP 1 structure
-best = np.argsort(w_opt_d[theta_new])[::-1][0]
 
 
 """
@@ -393,6 +384,10 @@ write_map(prior_map,"map_prior_"+str(w_1ake)+".mrc",map_param)
 
 
 
+# BIC
+BIC_all = np.log(len(mask_comb[0])) * 100 - 2*np.log(chisqrt_d[theta_new]) 
+
+
 """
 "" WRITING STATISTICS
 """
@@ -402,14 +397,114 @@ plik.write("Theta value chosen by Kneedle algorithm: "+str(theta_new)+"\n")
 plik.write("Reduced Chisqrt value: "+str(chisqrt_d[theta_new]/N_voxels)+"\n")
 plik.write("Population of 1ake: "+str(np.round(np.sum(w_opt_d[theta_new][:50]),2))+"\n")
 plik.write("Population of 4ake: "+str(np.round(np.sum(w_opt_d[theta_new][50:]),2))+"\n")
-plik.write("Priori Correlation [CC_sim+exp, CC_exp, CC_open, CC_close]: "+str(cc_prior)+"\t"+str(cc_prior_r)+"\t"+str(cc_prior_open)+"\t"+str(cc_prior_close)+"\n")
-plik.write("Posteriori Correlation [CC_sim+exp, CC_exp, CC_open, CC_close]: "+str(cc)+"\t"+str(cc_r)+"\t"+str(cc_open)+"\t"+str(cc_close)+"\n")
-plik.write("Single Best structure Correlation [CC_sim+exp, CC_exp, CC_open, CC_close]: "+str(cc_single)+"\t"+str(cc_single_r)+"\t"+str(cc_single_open)+"\t"+str(cc_single_close)+"\n")
+plik.write("Priori Correlation [CC_sim+exp, CC_exp]: "+str(cc_prior)+"\t"+str(cc_prior_r)+"\n")
+plik.write("Posteriori Correlation [CC_sim+exp, CC_exp]: "+str(cc)+"\t"+str(cc_r)+"\n")
+plik.write("Single Best structure Correlation [CC_sim+exp, CC_exp]: "+str(cc_single)+"\t"+str(cc_single_r)+"\n")
 plik.write("Priori Fourrier Shell Correlation at "+str(fsc_index)+" [1/A]: "+str(fsc_0_05)+"\n")
 plik.write("Posteriori Fourrier Shell Correlation at "+str(fsc_index)+" [1/A]: "+str(fsc_1_05)+"\n")
 plik.write("Avg Priori SMOC: "+str(np.mean(smoc_prior))+"\n")
 plik.write("Avg Posteriori SMOC: "+str(np.mean(smoc_poster))+"\n")
 plik.write("Single best structure SMOC: "+str(np.mean(smoc_single))+"\n")
-plik.write("Single Best structure: "+str(PDBs[best])+"\n")
+
+
+#### CLOSE STATE
+# INITIALIZATION
+w0,w_init,g0,g_init,sf_init = bioen_init_uniform(N_models)
+
+# Getting initial optimal scalling factor
+sf_start = leastsq(coeff_fit, sf_init, args=(w0,std,sim_em_v_data[:50],exp_em_mask))[0]
+
+# Running BioEN in a loop so we can apply knee dectection algorithm later
+w_opt_d = dict()
+sf_opt_d = dict()
+s_dict = dict()
+chisqrt_d = dict()
+for th in thetas:
+    w_temp, sf_temp = bioen_single(sim_em_v_data[:50],exp_em_mask,std,th, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+    w_opt_d[th] = w_temp
+    sf_opt_d[th] = sf_temp
+    s_dict[th] = get_entropy(w0,w_temp)
+    chisqrt_d[th] = chiSqrTerm(w_temp,std,sim_em_v_data[:50]*sf_temp,exp_em_mask)
+
+# Knee locator used to find sensible theta value
+theta_index = knee_loc(list(s_dict.values()),list(chisqrt_d.values()))
+theta_knee = thetas[theta_index]
+theta_index_sort = theta_index
+
+print("\nRunning BioEN iterations to narrow down the theta value")
+for i in range(0,10):
+    print("Round "+str(i+1)+" out of 10:")
+    thetas_old = np.sort(list(w_opt_d.keys()))[::-1]
+    theta_up = (thetas_old[theta_index_sort - 1] + thetas_old[theta_index_sort])/2.
+    theta_down = (thetas_old[theta_index_sort + 1] + thetas_old[theta_index_sort])/2.
+    for th in theta_up,theta_down:
+        w_temp, sf_temp = bioen_single(sim_em_v_data[:50],exp_em_mask,std,th, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+        w_opt_d[th] = w_temp
+        sf_opt_d[th] = sf_temp
+        s_dict[th] = get_entropy(w0,w_temp)
+        chisqrt_d[th] = chiSqrTerm(w_temp,std,sim_em_v_data[:50]*sf_temp,exp_em_mask)
+        # Knee locator
+    theta_index_new = knee_loc(list(s_dict.values()),list(chisqrt_d.values()))
+    theta_new = list(w_opt_d.keys())[theta_index_new]
+    thetas_sorted = np.sort(list(w_opt_d.keys()))[::-1]
+    theta_index_sort = np.where(theta_new == thetas_sorted)[0][0]
+
+# BIC CLOSE
+BIC_close = np.log(len(mask_comb[0])) * 50 - 2*np.log(chisqrt_d[theta_new])
+
+plik.write("Reduced Chisqrt value for CLOSE STATE: "+str(chisqrt_d[theta_new]/N_voxels)+"\n")
+
+#### OPES STATE
+w0,w_init,g0,g_init,sf_init = bioen_init_uniform(N_models)
+
+# Getting initial optimal scalling factor
+sf_start = leastsq(coeff_fit, sf_init, args=(w0,std,sim_em_v_data[50:],exp_em_mask))[0]
+
+# Running BioEN in a loop so we can apply knee dectection algorithm later
+w_opt_d = dict()
+sf_opt_d = dict()
+s_dict = dict()
+chisqrt_d = dict()
+for th in thetas:
+    w_temp, sf_temp = bioen_single(sim_em_v_data[50:],exp_em_mask,std,th, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+    w_opt_d[th] = w_temp
+    sf_opt_d[th] = sf_temp
+    s_dict[th] = get_entropy(w0,w_temp)
+    chisqrt_d[th] = chiSqrTerm(w_temp,std,sim_em_v_data[50:]*sf_temp,exp_em_mask)
+
+# Knee locator used to find sensible theta value
+theta_index = knee_loc(list(s_dict.values()),list(chisqrt_d.values()))
+theta_knee = thetas[theta_index]
+theta_index_sort = theta_index
+
+print("\nRunning BioEN iterations to narrow down the theta value")
+for i in range(0,10):
+    print("Round "+str(i+1)+" out of 10:")
+    thetas_old = np.sort(list(w_opt_d.keys()))[::-1]
+    theta_up = (thetas_old[theta_index_sort - 1] + thetas_old[theta_index_sort])/2.
+    theta_down = (thetas_old[theta_index_sort + 1] + thetas_old[theta_index_sort])/2.
+    for th in theta_up,theta_down:
+        w_temp, sf_temp = bioen_single(sim_em_v_data[50:],exp_em_mask,std,th, g0, g_init, sf_start, n_iter, epsilon, pgtol, maxiter)
+        w_opt_d[th] = w_temp
+        sf_opt_d[th] = sf_temp
+        s_dict[th] = get_entropy(w0,w_temp)
+        chisqrt_d[th] = chiSqrTerm(w_temp,std,sim_em_v_data[50:]*sf_temp,exp_em_mask)
+        # Knee locator
+    theta_index_new = knee_loc(list(s_dict.values()),list(chisqrt_d.values()))
+    theta_new = list(w_opt_d.keys())[theta_index_new]
+    thetas_sorted = np.sort(list(w_opt_d.keys()))[::-1]
+    theta_index_sort = np.where(theta_new == thetas_sorted)[0][0]
+
+# BIC
+BIC_open = np.log(len(mask_comb[0])) * 50 - 2*np.log(chisqrt_d[theta_new])
+
+plik.write("Reduced Chisqrt value for OPEN STATE: "+str(chisqrt_d[theta_new]/N_voxels)+"\n")
+plik.write("BIC for whole dataset: "+str(BIC_all)+"\n")
+plik.write("BIC for close dataset: "+str(BIC_close)+"\n")
+plik.write("BIC for open dataset: "+str(BIC_open)+"\n")
 plik.write("\n")
 plik.close()
+
+
+
+
