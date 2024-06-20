@@ -25,11 +25,11 @@ warnings.filterwarnings('ignore')
 path = "/"
 # Input data/files
 mapa = path+"reference_map.mrc"
-threshold = 0.005
-ref_pdb = "TF.pdb"
-ref_traj = "TF_1000.xtc"
-resolution = 4.1
-mask_arg = 'sim'
+threshold = # map threshold
+ref_pdb = "ref_pdb.pdb"
+ref_traj = "trajectory.xtc"
+resolution = # Map resolution
+mask_arg = 'sim' # Mask type: 'exp' - only based on experimental cryo-EM density, 'sim' - both experimental cryo-EM density + based on simulated ensemble
 
 """
 "" Reference cro-EM map
