@@ -1,2 +1,2 @@
-# cryoBioEN
-Addition to the BioEN, which allows to incorporate cryoEM data into reweighting
+# cryoENsemble
+Addition to the BioEn, which allows the incorporation of cryo-EM data into the reweighting process.
