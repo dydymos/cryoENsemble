@@ -3,8 +3,6 @@ import sys
 import mrcfile
 
 
-
-
 def reference_map(map):
     """
     Reference cryo-EM map

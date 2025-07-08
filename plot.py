@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-
 def plot_lcurve(s_dict,chisqrt_d,theta_new,N_voxels,name):
     cmap = plt.cm.get_cmap('rainbow')
     plt.figure(figsize=[6,6])
@@ -77,6 +76,7 @@ def plot_weights_sel(w_opt_d_sel,N_models,selected_frames,theta_new_sel,name):
     plt.savefig(name)
     plt.clf()
 
+# old plots
 def plot_fsc(fsc_0,fsc_1,name):
     plt.plot(fsc_0[:,0],fsc_0[:,1],label="FSC prior",lw= 2)
     plt.plot(fsc_1[:,0],fsc_1[:,1],label="FSC posterior",lw=2)
